@@ -1,0 +1,8 @@
+"Feature.ID"	"kw.ep"	"kw.eBH"	"glm.ep"	"glm.eBH"	"Taxon"	"Consensus"
+"1"	"0147e304b1ce1be9c4ff15b660605ef2"	0.000592400004155219	0.013237661129599	6.53228392143529e-06	0.000134353178541747	"d__Eukaryota; p__Ascomycota; c__Sordariomycetes"	1
+"2"	"1db96e3e66ec1535d586d1a3a954cb66"	0.000209210220939806	0.00757194330628596	5.57746777540335e-05	0.000805928430154394	"d__Eukaryota; p__Mucoromycota; c__Incertae_Sedis; o__Mucorales; f__Mucoraceae; g__Mucor"	0.8
+"3"	"588a0e16a32970569d10c88aaa93f050"	3.84724148493582e-05	0.00525901355685303	6.39412968080292e-06	0.000133868640377325	"d__Eukaryota; p__Ascomycota; c__Sordariomycetes; o__Hypocreales; f__Nectriaceae; g__Fusarium"	0.9
+"4"	"81979356618c524328e9a9fc41c30906"	0.00017844271342074	0.00721415969161108	2.9293866551867e-07	1.04497547278683e-05	"d__Eukaryota; p__Chytridiomycota; c__Chytridiomycetes"	1
+"5"	"a8a04070168d7591bb5dde41a412049c"	0.000183653166017125	0.00725665044896894	8.67077089715967e-05	0.00139161853406985	"d__Eukaryota; p__Basidiomycota; c__Tremellomycetes; o__Trichosporonales; f__Trichosporonaceae; g__Trichosporon"	0.6
+"6"	"ab657f069eebbddfa32f5fd2609e4b24"	0.000639955470136051	0.013900481999617	4.68348796455184e-05	0.00067506058353495	"d__Eukaryota; p__Ascomycota; c__Dothideomycetes; o__Capnodiales; f__Cladosporiaceae; g__Cladosporium; s__Cladosporium_herbarum"	0.7
+"7"	"df8e51cea1a3de41ef9a1cd5d6c65a73"	0.00028480309221266	0.00864755669982529	4.66042687607765e-05	0.000518172231754218	"d__Eukaryota; p__Chytridiomycota; c__Chytridiomycetes; o__Spizellomycetales"	0.7

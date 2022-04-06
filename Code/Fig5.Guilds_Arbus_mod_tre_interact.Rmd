@@ -1,0 +1,341 @@
+---
+title: "Guilds_Arbus"
+author: "Stephanie Hereira Pacheco"
+date: sys.date()
+output: html_document
+---
+```{r, warning=FALSE, message=FALSE, width = 14, height = 9}
+#load libraries and files
+library(imager)
+library(cowplot)
+library(ggpubr)
+library(tidyverse)
+library(magrittr)
+library(ggpubr)
+library(readxl)
+library(viridis)
+arbus2<-load.image(file = "../Figures/arbus_raw.png")
+photo_panel <- ggdraw() + draw_image(arbus2, scale = 1)
+
+#grafica arbusculos
+
+
+dosmeses<- readxl::read_excel("../Data/MICOR ARBUS.xlsx", sheet = 2, range = "A1:O28")
+cuatromeses<- readxl::read_excel("../Data/MICOR ARBUS.xlsx", sheet = 3, range = "A1:O29")
+seismeses<- readxl::read_excel("../Data/MICOR ARBUS.xlsx", sheet = 4, range = "A1:O28")
+
+arbus<- bind_rows(list(m2 = dosmeses, m4 = cuatromeses, m6=seismeses), .id = "Tiempos")
+arbusc<- arbus %>% dplyr::select(L, P, "T", C, Tiempos, Porcentaje="%")
+
+#ggbloxplot de todas
+
+arbusc$Time <- factor(arbusc$Tiempos,
+                        levels = c("0", "m2", "m4", "m6"),
+                        labels = c("day0", "2 months", "4 months", "6 months"))
+arbusc$Treatment <- factor(arbusc$T,
+                             levels = c("1", "2", "3"),
+                             labels = c("Wet", "Dry", "Extreme dry"))
+
+
+pallete = c("#479330", "#FFFF00", "#FF0000")
+
+p<-arbusc %>% filter(Time == "2 months") %>%  ggboxplot(
+              ., x = "Time", y = "Porcentaje", #add = "mean_se",
+              palette = pallete, color= "black", fill = "Treatment",outlier.shape = NA,
+             # position = position_dodge(0.8) ,  
+             xlab = "Time",
+              ylab = "Percentage of mycorrizal colonization (%)")
+
+p1<-p + stat_compare_means(aes(group= Treatment))+
+                               # ,label= paste0(..method..,"\n", "p=",..p.format..)))+ 
+  stat_compare_means(label.y = 130, show.legend = F )+ font("legend.title", size = 12)+
+  font("legend.text", size = 12)+theme(axis.title.x = element_blank(), 
+                                       axis.text.x = element_blank(),
+                                       axis.ticks = element_blank())+theme(legend.position = "right")+ guides(fill=guide_legend(title="Water regime"))
+
+
+p1
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+#Guilds files
+
+#Guild level
+filo<- read_tsv("../Data/merge_table_240_noplant_filtered.guilds.txt") %>%
+  rename( OTUID = "#OTU ID")
+metadata<- read.csv("../Data/FINALMAP18S_2.csv") %>% dplyr::select(
+  key=sampleid, groups, Treatment, Type_of_soil)
+
+relabunda<- function(x){(t(t(x)/colSums(x)))*100}
+
+filo2<- data.frame(filo[1], relabunda(filo[2:66]),
+                   filo[67:76] , check.names = F)
+
+
+guilds_gather<-filo2%>%dplyr::select(`1.2RO`:`2.10NR`, `Guild` )%>% gather(
+  -`Guild`,key = "key", value = "value")
+
+guilds_gather_sum<- guilds_gather %>% group_by(
+  key,`Guild`)%>% summarise(prop =sum(value)) %>%
+    mutate(Type = case_when(
+      str_detect(key, "RI") ~ "Rhizosphere",
+      str_detect(key,"US") ~ "Uncultivated",
+      str_detect(key,"RO") ~ "Roots",
+      str_detect(key,"SE") ~ "Initials",
+      str_detect(key,"P") ~ "Initials",
+      str_detect(key,"NR") ~ "Non-Rhizosphere")) %>% inner_join(metadata)
+
+
+
+
+  
+#Trophic level
+
+trophic_gather<-filo2%>%dplyr::select(`1.2RO`:`7.23NR`, `Trophic Mode` )%>% gather(
+  -`Trophic Mode`,key = "key", value = "value")
+
+trophic_gather_sum<-trophic_gather %>% group_by(
+  key,`Trophic Mode`)%>% summarise(prop =sum(value)) %>%
+  mutate(Type = case_when(
+    str_detect(key, "RI") ~ "Rhizosphere",
+    str_detect(key,"US") ~ "Uncultivated",
+    str_detect(key,"RO") ~ "Roots",
+    str_detect(key,"SE") ~ "Initials",
+    str_detect(key,"P") ~ "Initials",
+    str_detect(key,"NR") ~ "Non-Rhizosphere"))%>% inner_join(metadata)
+
+#Growth level
+
+growth_gather<-filo2%>%dplyr::select(`1.2RO`:`7.23NR`, `Growth Morphology` )%>% gather(
+  -`Growth Morphology`,key = "key", value = "value")
+
+growth_gather_sum<-growth_gather %>% group_by(
+  key,`Growth Morphology`)%>% summarise(prop =sum(value)) %>%
+  mutate(Type = case_when(
+    str_detect(key, "RI") ~ "Rhizosphere",
+    str_detect(key,"US") ~ "Uncultivated",
+    str_detect(key,"RO") ~ "Roots",
+    str_detect(key,"SE") ~ "Initials",
+    str_detect(key,"P") ~ "Initials",
+    str_detect(key,"NR") ~ "Non-Rhizosphere"))%>% inner_join(metadata)
+
+
+```
+
+Let's plot!
+```{r, warning=FALSE, message=FALSE, fig.width=14, fig.height=6}
+#colors plot
+color_type<- c("#800000", "#808000", "#008000", "#D35400", "#2E4053")
+
+
+guilds_gather_sum_join<- guilds_gather_sum  %>% 
+  rename(Level = Guild) %>% mutate(
+  type = "Guild")%>%filter(
+Level %in% c("Leaf Saprotroph" , "Arbuscular Mycorrhizal")) 
+trophic_gather_sum_join<-trophic_gather_sum %>%  rename(
+  Level =`Trophic Mode` ) %>% mutate(
+  type = "Trophic")%>%filter(
+ Level  %in% c("Saprotroph" , "Symbiotroph"))
+
+gather_sum<- rbind(guilds_gather_sum_join, trophic_gather_sum_join) %>% 
+  mutate(Treatments = case_when(
+    str_detect(Treatment, "1") ~ "Wet",
+    str_detect(Treatment, "2") ~ "Dry",
+    str_detect(Treatment, "3") ~ "Extreme-dry"))
+gather_sum$Treatments<- factor(gather_sum$Treatments, levels = c(
+  "Wet", "Dry", "Extreme-dry"))
+
+```
+
+```{r}
+#compartment effect
+library(lme4)
+library(nlme)
+library(pgirmess)
+meta<- read.delim("../Data/FINALMAP18S_plant.csv", 
+                  check.names = F) %>% dplyr::select("#SampleID", "Plant")
+
+gather_sum_plant<- gather_sum %>% inner_join(meta, by = c("key"="#SampleID"))
+
+guild_wet_mico<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Wet") %>% filter(Level=="Arbuscular Mycorrhizal")
+guild_wet_leafsap<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Wet") %>% filter(Level=="Leaf Saprotroph")
+
+guild_dry_mico<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Dry") %>% filter(Level=="Arbuscular Mycorrhizal")
+guild_dry_leafsap<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Dry") %>% filter(Level=="Leaf Saprotroph")
+
+
+guild_exdry_mico<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Extreme-dry") %>% filter(Level=="Arbuscular Mycorrhizal")
+guild_exdry_leafsap<- gather_sum_plant %>%  filter(type=="Guild")  %>% filter(
+  Treatments =="Extreme-dry") %>% filter(Level=="Leaf Saprotroph")
+
+
+guild_wet_mico1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_wet_mico)
+guild_wet_mico2<-PermTest(guild_wet_mico1)
+guild_wet_mico2
+guild_wet_leafsap1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_wet_leafsap)
+guild_wet_leafsap2<-PermTest(guild_wet_leafsap1)
+
+guild_dry_mico1<-lm(prop~ Type_of_soil,  data = guild_dry_mico)
+guild_dry_mico2<-PermTest(guild_dry_mico1)
+guild_dry_leafsap1<-lm(prop~ Type_of_soil, data = guild_dry_leafsap)
+guild_dry_leafsap2<-PermTest(guild_dry_leafsap1)
+
+guild_exdry_mico1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_exdry_mico)
+guild_exdry_mico2<-PermTest(guild_exdry_mico1)
+guild_exdry_leafsap1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_exdry_leafsap)
+guild_exdry_leafsap2<-PermTest(guild_exdry_leafsap1)
+
+
+annot_df_guild<- data.frame(
+  Level= c("Arbuscular Mycorrhizal", "Leaf Saprotroph", 
+           "Arbuscular Mycorrhizal", "Leaf Saprotroph",
+           "Arbuscular Mycorrhizal", "Leaf Saprotroph"),
+  prop=c(6,6,6, 6, 6,6),
+  Treatments=c("Wet", "Dry", "Extreme-dry"), 
+  label=c(
+paste0("p=",guild_wet_mico2$resultats$p.value[2]),  
+paste0("p=",guild_wet_leafsap2$resultats$p.value[2]),
+paste0("p=",guild_dry_mico2$resultats$p.value[1]),
+paste0("p=",guild_dry_leafsap2$resultats$p.value[1]),
+paste0("p=",guild_exdry_mico2$resultats$p.value[2]),
+paste0("p=",guild_exdry_leafsap2$resultats$p.value[2])),  check.names = F)
+  
+annot_df_guild$Treatments<- factor(annot_df_guild$Treatments, 
+                                   levels =c("Wet", "Dry", "Extreme-dry") )
+
+```
+
+```{r}
+phyloplot4 <- gather_sum %>%  mutate(Type=case_when(
+  Type =="Non-Rhizosphere"~"Bulk soil",
+  TRUE ~ as.character(Type)
+))%>%  filter(!key=="6.13RO"&!key=="5.14RO")  %>%   filter(
+  type=="Guild") %>% 
+  ggbarplot(x = "Level", y="prop", color = "black", fill = "Type", 
+            position = position_dodge(), add = "mean_se",
+            facet.by = "Treatments")+
+  facet_wrap(~Treatments, scales = "free", ncol=3, strip.position = "top")+
+  theme_bw()+
+  theme(panel.spacing=unit(1,"lines"),
+        strip.text.x = element_text(size = 16),
+        axis.text =  element_text(colour = "black", size = 14),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.text = element_text(size=14), 
+        #axis.text.x = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        legend.position = "top")+scale_fill_manual(values =color_type)+
+  ylab("Relative abundance (%)")+geom_text(data = annot_df_guild,label=annot_df_guild$label)
+phyloplot4
+```
+
+```{r}
+#compartment effect
+library(lme4)
+library(nlme)
+library(pgirmess)
+meta<- read.delim("../Data/FINALMAP18S_plant.csv", 
+                  check.names = F) %>% dplyr::select("#SampleID", "Plant")
+gather_sum_plant<- gather_sum %>% inner_join(meta, by = c("key"="#SampleID"))
+
+guild_wet_mico<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Wet") %>% filter(Level=="Symbiotroph")
+guild_wet_leafsap<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Wet") %>% filter(Level=="Saprotroph")
+
+guild_dry_mico<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Dry") %>% filter(Level=="Symbiotroph")
+guild_dry_leafsap<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Dry") %>% filter(Level=="Saprotroph")
+
+
+guild_exdry_mico<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Extreme-dry") %>% filter(Level=="Symbiotroph")
+guild_exdry_leafsap<- gather_sum_plant %>%  filter(type=="Trophic")  %>% filter(
+  Treatments =="Extreme-dry") %>% filter(Level=="Saprotroph")
+
+guild_wet_mico1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_wet_mico)
+guild_wet_mico2<-PermTest(guild_wet_mico1)
+guild_wet_mico2
+guild_wet_leafsap1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_wet_leafsap)
+guild_wet_leafsap2<-PermTest(guild_wet_leafsap1)
+
+guild_dry_mico1<-lm(prop~ Type_of_soil,  data = guild_dry_mico)
+guild_dry_mico2<-PermTest(guild_dry_mico1)
+
+guild_dry_leafsap1<-lm(prop~ Type_of_soil, data = guild_dry_leafsap)
+guild_dry_leafsap2<-PermTest(guild_dry_leafsap1)
+
+guild_exdry_mico1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_exdry_mico)
+
+
+guild_exdry_mico2<-PermTest(guild_exdry_mico1)
+guild_exdry_leafsap1<-lme(prop~ Type_of_soil, random=~1 |Plant, data = guild_exdry_leafsap)
+guild_exdry_leafsap2<-PermTest(guild_exdry_leafsap1)
+
+
+annot_df_guild<- data.frame(
+  Level= c("Symbiotroph", "Saprotroph", "Symbiotroph",
+           "Saprotroph","Symbiotroph", "Saprotroph"),
+  prop=c(6,6,6, 6, 6,6),
+  Treatments=c("Wet", "Dry", "Extreme-dry"), 
+  label=c(
+paste0("p=",guild_wet_mico2$resultats$p.value[2]),  
+paste0("p=",guild_wet_leafsap2$resultats$p.value[2]),
+paste0("p=",guild_dry_mico2$resultats$p.value[1]), 
+paste0("p=",guild_dry_leafsap2$resultats$p.value[1]),
+paste0("p=",guild_exdry_mico2$resultats$p.value[2]), 
+paste0("p=",guild_exdry_leafsap2$resultats$p.value[2])),  check.names = F)
+  
+annot_df_guild$Treatments<- factor(annot_df_guild$Treatments, 
+                                   levels =c("Wet", "Dry", "Extreme-dry") )
+
+```
+
+```{r}
+phyloplot5 <- gather_sum %>%  mutate(Type=case_when(
+  Type =="Non-Rhizosphere"~"Bulk soil",
+  TRUE ~ as.character(Type)
+))%>%  filter(!key=="6.13RO"&!key=="5.14RO")  %>%   filter(type=="Trophic") %>% 
+  ggbarplot(x = "Level", y="prop", color = "black", fill = "Type", 
+            position = position_dodge(), add = "mean_se", 
+            facet.by = "Treatments")+
+  facet_wrap(~Treatments, scales = "free",
+             ncol=3, strip.position = "top")+
+  theme_bw()+
+  theme(panel.spacing=unit(1,"lines"),
+        strip.text.x = element_text(size = 16),
+        axis.text =  element_text(colour = "black", size = 14),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 12),
+        legend.title = element_blank(),
+        legend.text = element_text(size=14), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "top")+
+  scale_fill_manual(values =color_type)+
+  ylab("Relative abundance (%)")+
+  geom_text(data = annot_df_guild,label=annot_df_guild$label)+
+  theme(legend.position = "none")
+
+phyloplot5
+```
+
+
+```{r, fig.height=10, fig.width=14}
+library(cowplot)
+a1<-plot_grid(photo_panel, p1)
+a2<- plot_grid(phyloplot4,phyloplot5,nrow = 2, rel_heights = c(1.2,1))
+b1<- plot_grid( a2,a1 ,nrow = 2, rel_heights = c(2,1.3))
+b1
+#ggsave('../../Figures_final//Fig5.guilds_arbusc_modif.pdf',
+#width = 14, height = 10, dpi = 300, plot = b1)
+```
+

@@ -1,0 +1,333 @@
+---
+title: "Barplots diversity"
+author: 
+- name: Stephanie Hereira
+  affiliation: Centro de Investigación y estudios avanzados del IPN
+  email: shereirap@cinvestav.mx
+date: "`r format(Sys.time(), '%d - %m - %Y')`"
+output:
+  html_document:
+    theme: united
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+```{r, message=FALSE, warning=FALSE}
+#loading libraries
+library(hillR)
+library(tidyverse)
+library(qiime2R)
+library(dplyr)
+library(cowplot)
+library(RColorBrewer)
+library(gtable)
+library(ggpubr)
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, eval=FALSE}
+#Calculating Hill numbers
+#setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
+set.seed(123)
+otu_all<- read_qza("../../Data/merge_table_240_noplant_filtered_nous.qza")$data %>% as.data.frame()
+#remove non-fungi taxa
+taxonomy_240<- read_qza("../Data/taxonomy_blast_240_0.97.qza")$data
+
+taxonomy_filter<- taxonomy_240 %>% filter(
+  !str_detect(Taxon, "ozoa"))%>% filter(
+  !str_detect(Taxon, "helida")) %>% filter(
+  !str_detect(Taxon, "ophyta")) %>% filter(
+  !str_detect(Taxon, "Ciliophora")) %>% filter(
+  !str_detect(Taxon, "Nucleariidae_and_Fonticula_group")) %>% filter(
+  !str_detect(Taxon, "Arthrioida")) %>% filter(
+  !str_detect(Taxon, "Labyrinthulomycetes"))  %>% filter(
+  !str_detect(Taxon, "Apicomplexa")) %>% filter(
+  !str_detect(Taxon, "Bicosoecida")) %>% filter(
+  !str_detect(Taxon, "Breviatea")) %>% filter(
+  !str_detect(Taxon, "Aphelidea"))  %>% filter(
+  !str_detect(Taxon, "Arthropoda")) 
+
+otu_all<-  otu_all[match(taxonomy_filter$Feature.ID, rownames(otu_all)),] %>% drop_na(.)
+
+
+
+hill_all_q0<-hill_taxa(otu_all, q = 0, MARGIN = 2)
+hill_all_q1<-hill_taxa(otu_all, q = 1, MARGIN = 2)
+hill_all_q2<-hill_taxa(otu_all, q = 2, MARGIN = 2)
+hill_all<- cbind(hill_all_q0, hill_all_q1, hill_all_q2)
+#summaricing
+meta_all<-read_csv(file = "../Data/FINALMAP18S.csv")
+meta_all$Type<- factor(meta_all$Type_of_soil,
+                       levels = c(  "non-rizospheric","Non-rizospheric", 
+                                    "Rizospheric", "Roots", "Uncultivated", "Seeds"),
+                       labels = c("initials", "Bulk soil", "Rhizosphere",
+                                  "Roots", "Uncultivated", "Seeds"))
+meta_all$Treatment<- factor(meta_all$Treatment,
+                            levels = c( "0", "1", "2", "3"),
+                            labels = c("Initial","Wet", "Dry", "Extreme_dry"))
+
+alpha_all<- data.frame(hill_all) %>% rownames_to_column(
+  var = "sampleid") %>% inner_join(meta_all)%>% inner_join(
+    meta_all)%>% rename(q0 = hill_all_q0,
+                        q1= hill_all_q1,
+                        q2 = hill_all_q2) %>% gather(
+                          q0:q2, key = "q", value = "value") %>% filter(
+                            q %in% c("q0", "q1", "q2"))%>%mutate(
+                              qs= case_when(
+                                str_detect(q, "q0") ~ "q0 (species richness)",
+                                str_detect(q, "q1") ~ "q1 (typical species)",
+                                str_detect(q, "q2") ~ "q2 (dominant species)"))
+
+
+#write_tsv(alpha_all, "../Data/alpha_all_filt.tsv")
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE, eval=FALSE}
+#Species as rows, traits as columns
+
+#setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
+Alpha.t_asv_table<- read.delim("../../Data/alpha_all_filt.tsv")%>%mutate(
+                              qs= case_when(
+                                str_detect(q, "q0") ~ "q = 0",
+                                str_detect(q, "q1") ~ "q = 1",
+                                str_detect(q, "q2") ~ "q = 2"))
+  
+EC_predicted <- read.delim("../../Data/ec_18S_counts.txt_predicted.tsv", row.names=1, check.names = F)
+otutable<- read_q2biom("../../Data/table_all.biom")
+totutable <- t(otutable)
+totutable <- totutable[ , match(rownames(EC_predicted), colnames(totutable))]
+
+#Calculate the functional diversity (Not running due to long time)
+
+func_q0<- hill_func(totutable, traits = EC_predicted, q = 0)
+func_q1<- hill_func(totutable, traits = EC_predicted, q = 1)
+func_q2<- hill_func(totutable, traits = EC_predicted, q = 2)
+
+
+funct_q0<-t(func_q0) %>%as.data.frame() %>%  rownames_to_column(var = "sampleid")
+funct_q1<-t(func_q1)%>%as.data.frame() %>%  rownames_to_column(var = "sampleid")
+funct_q2<-t(func_q2)%>%as.data.frame() %>%  rownames_to_column(var = "sampleid")
+
+MD_q<-Alpha.t_asv_table  %>% inner_join(funct_q0, by = "sampleid")
+
+MD_q0<-Alpha.t_asv_table %>% filter(q=="q0") %>% inner_join(funct_q0, by = "sampleid")
+MD_q1<-Alpha.t_asv_table %>% filter(q=="q1") %>% inner_join(funct_q1, by = "sampleid")
+MD_q2<-Alpha.t_asv_table %>% filter(q=="q2") %>% inner_join(funct_q2, by = "sampleid")
+
+  
+#write.table(MD_q, "diversity.txt",sep = "\t" )
+#write.table(MD_q0, "MD_q0.txt",sep = "\t" )
+#write.table(MD_q1, "MD_q1.txt",sep = "\t" )
+#write.table(MD_q2, "MD_q2.txt",sep = "\t" )
+  
+```
+
+```{r, fig.height=10, fig.width=18}
+#setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
+MD_q<- read.delim("../Data/diversity.txt")
+MD_q0<- read.delim("../Data/MD_q0.txt")
+MD_q1<- read.delim("../Data/MD_q1.txt")
+MD_q2<- read.delim("../Data/MD_q2.txt")
+  
+  
+MD_q<- read.delim("../Data/diversity.txt")%>%mutate(
+                              qs= case_when(
+                                str_detect(q, "q0") ~ "q = 0",
+                                str_detect(q, "q1") ~ "q = 1",
+                                str_detect(q, "q2") ~ "q = 2"))
+
+MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+MD_q0$Treatment <- factor(MD_q0$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+MD_q1$Treatment <- factor(MD_q1$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+  
+  
+  a0<-MD_q  %>% filter(q=="q0" )%>% ggbarplot(., x = "Type", y = "value", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")+  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Effective number of ASVs")+
+    theme( panel.border = element_blank(), 
+       panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))
+  a1<-MD_q  %>% filter(q=="q1" )%>% ggbarplot(., x = "Type", y = "value", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")+  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Effective number of ASVs")+
+    theme( panel.border = element_blank(), 
+       panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))
+  a2<-MD_q  %>% filter(q=="q2" )%>% ggbarplot(., x = "Type", y = "value", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")+  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Effective number of ASVs")+
+    theme( panel.border = element_blank(), 
+       panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))
+library(cowplot)
+  tres<-plot_grid(a0, a1, a2, nrow = 3, labels = c("A", "B", "C"))
+  
+  MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+  
+  b0<-MD_q0 %>% ggbarplot(., x = "Type", y = "MD_q", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")  +  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Mean functional diversity")+
+    theme( panel.border = element_blank(), 
+       panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))
+
+    b1<-MD_q1 %>% ggbarplot(., x = "Type", y = "MD_q", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")  +  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Mean functional diversity")+
+      theme( panel.border = element_blank(), 
+     panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))
+    
+  b2<-MD_q2 %>% ggbarplot(., x = "Type", y = "MD_q", facet.by = c(
+    "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")  +  scale_fill_manual(
+      values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+theme(
+        legend.position = "none", axis.title.x = element_blank())+ylab("Mean functional diversity")+ 
+    theme( panel.border = element_blank(), 
+ panel.spacing.x = unit(0,"line"), axis.line= element_line(colour = "black"),
+        strip.text.y = element_text(size=14, face="italic"),
+       strip.text.x = element_text(size=14),
+       axis.title = element_text(size = 14))  
+  tres_b<- plot_grid(b0, b1, b2, nrow = 3, labels = c("D", "E", "F"))
+all<-  plot_grid(tres, tres_b, ncol = 2)
+
+all
+
+#ggsave('/home/steph/Documents/Documentos/fastas nuevos/18S/R_project/Figures_final//Figure1.diversity_filt_modif.pdf',
+ #width = 18, height = 10, dpi = 300, plot = all)
+```
+
+Lmer models with interaction effects -Taxonomic alpha diversity
+
+```{r}
+library(lme4)
+library(nlme)
+library(cowplot)
+library(pgirmess) 
+library(emmeans)
+
+alpha<-read.delim("../Data/alpha_all_filt.tsv") %>% dplyr::select(sampleid, q, value)
+alpha<- alpha %>% spread(q, value)
+metadata<- read.delim("../Data/FINALMAP18S_plant.csv", check.names = F) 
+alpha<- alpha %>% inner_join(metadata,by = c("sampleid"="#SampleID"))
+
+
+alpha<- alpha %>% mutate(Treatments =case_when(
+  Treatment =="1" ~ "Wet",
+  Treatment =="2" ~ "Dry",
+  Treatment =="3" ~ "Extreme-dry")) 
+
+#q0
+q0_lme<-lme(q0~ Type_of_soil+Treatments+Type_of_soil*Treatments, random=~1 |Plant, data = alpha)
+q0_lme_perm<-PermTest(q0_lme)
+q0_lme_perm
+
+#q1
+q1_lme<-lme(q1~ Type_of_soil+Treatments+Type_of_soil*Treatments, random=~1 |Plant, data = alpha)
+q1_lme_perm<-PermTest(q1_lme)
+q1_lme_perm
+
+#q2
+q2_lme<-lme(q2~ Type_of_soil+Treatments+Type_of_soil*Treatments, random=~1 |Plant, data = alpha)
+q2_lme_perm<-PermTest(q2_lme)
+q2_lme_perm
+```
+
+
+Lmer models with interaction effects -Functional alpha diversity
+
+```{r}
+#Functional
+MD_q0<- read.delim("../Data/MD_q0.txt")  %>% mutate(cate="q0")
+MD_q1<- read.delim("../Data/MD_q1.txt")%>% mutate(cate="q1")
+MD_q2<- read.delim("../Data/MD_q2.txt")%>% mutate(cate="q2")
+
+alpha_f<-rbind(MD_q0, MD_q1, MD_q2) %>% dplyr::select(sampleid, cate, MD_q)
+alpha_f<- alpha_f %>% spread(cate, MD_q)
+alpha_f<- alpha_f %>% inner_join(metadata,by = c("sampleid"="#SampleID")) %>% mutate(
+  Treatments =case_when(
+  Treatment =="1" ~ "Wet",
+  Treatment =="2" ~ "Dry",
+  Treatment =="3" ~ "Extreme-dry")) 
+
+
+
+#q0
+q0_lme_f<-lme(q0~ Type_of_soil+Treatment+Type_of_soil*Treatment, random=~1 |Plant, data = alpha)
+q0_lme_perm_f<-PermTest(q0_lme_f)
+q0_lme_perm_f
+
+#q1
+q1_lme_f<-lme(q1~ Type_of_soil+Treatment+Type_of_soil*Treatment, random=~1 |Plant, data = alpha)
+q1_lme_perm_f<-PermTest(q1_lme_f)
+q1_lme_perm_f
+
+#q2
+q2_lme_f<-lme(q2~ Type_of_soil+Treatment+Type_of_soil*Treatment, random=~1 |Plant, data = alpha)
+q2_lme_perm_f<-PermTest(q2_lme_f)
+q2_lme_perm_f
+```
+
+Sorting by letters 
+
+```{r}
+#Letters were added manually resulting from the next code
+
+alpha<- alpha %>% unite("interact", c("Type_of_soil", "Treatments"), remove = F)
+
+q0_lme<-lme(q0~ interact, random=~1 |Plant, data = alpha)
+q0_lme_means<-emmeans(q0_lme, pairwise ~ interact)
+multcomp::cld(object = q0_lme_means$emmeans,
+              Letters = letters)
+
+
+q1_lme<-lme(q1~ interact, random=~1 |Plant, data = alpha)
+q1_lme_means<-emmeans(q1_lme, pairwise ~ interact)
+multcomp::cld(object = q1_lme_means$emmeans,
+              Letters = letters)
+
+
+q2_lme<-lme(q2~ interact, random=~1 |Plant, data = alpha)
+q2_lme_means<-emmeans(q2_lme, pairwise ~ interact)
+multcomp::cld(object = q2_lme_means$emmeans,
+              Letters = letters)
+
+
+alpha_f<- alpha_f %>% unite("interact", c("Type_of_soil", "Treatments"), remove = F)
+
+q0_lme_f<-lme(q0~ interact, random=~1 |Plant, data = alpha_f)
+q0_lme_means_f<-emmeans(q0_lme_f, pairwise ~ interact)
+multcomp::cld(object = q0_lme_means_f$emmeans,
+              Letters = letters)
+
+q1_lme_f<-lme(q1~ interact, random=~1 |Plant, data = alpha_f)
+q1_lme_means_f<-emmeans(q1_lme_f, pairwise ~ interact)
+multcomp::cld(object = q1_lme_means_f$emmeans,
+              Letters = letters)
+
+
+q2_lme_f<-lme(q2~ interact, random=~1 |Plant, data = alpha_f)
+q2_lme_means_f<-emmeans(q2_lme_f, pairwise ~ interact)
+multcomp::cld(object = q2_lme_means_f$emmeans,
+              Letters = letters)
+
+
+```
+

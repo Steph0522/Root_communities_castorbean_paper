@@ -1,0 +1,371 @@
+---
+title: "Scripts to 18s-qiime2"
+author:
+- name: Stephanie Hereira
+  affiliation: Centro de Investigación y estudios avanzados del IPN
+  email: shereirap@cinvestav.mx
+date: "`r format(Sys.time(), '%d - %m - %Y')`"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    theme: united
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+Qiime2 Scripts
+
+**Step 1: EXTRACT BARCODES**
+
+For this step, It will be used the 'extract_barcodes.py' script used in qiime1.
+
+``` {.bash}
+#I'll use one library called "Ste1" with Ste1_1.fastq and Ste2_1.fastq 
+
+extract_barcodes.py -f Ste1_1.fastq -r Ste1_2.fastq -c barcode_paired_end \
+--bc1_len 8 --bc2_len 8 -o extract_barcode_ste1
+```
+
+-f : forward reads
+
+-r : reverse reads
+
+-c: input type [default: barcode_single_end]
+
+-bc1_len and --bc2_len : Specify the length, in base pairs, of barcodes
+
+-o : output
+
+**Step 2: IMPORT TO QIIME AND DEMULTIPLEX SEQUENCES**
+
+For this step, we need to create a directory with the three files output from the previous step, containing:
+
+1.  forward.fastq.gz: file that contains the forward sequence reads
+2.  reverse.fastq.gz: file that contains the reverse sequence reads
+3.  barcdes.fastq.gz: file that contains the barcode sequence reads
+
+``` {.bash}
+qiime tools import \
+  --type EMPPairedEndSequences \
+  --input-path extract_barcode_ste1 \
+  --output-path ste1.qza
+```
+
+--type : type of file , in this case paired end sequences. Check other import types[^1].
+
+[^1]: <https://docs.qiime2.org/2021.4/tutorials/importing/>
+
+--input-path: directory with the files to import
+
+--output-path: artifact name output
+
+And then, we perform the demultiplexing:
+
+``` {.bash}
+qiime demux emp-paired --i-seqs ste1.qza \
+--m-barcodes-file ../18S/STE1.txt \
+--m-barcodes-column BarcodeSequence \
+--output-dir demux_STE1\
+--p-no-golay-error-correction
+```
+
+--i-seqs : artifact with the import paired end sequences
+
+--m-barcodes-file : mapping file containing information of the sequences
+
+--m-barcodes-column: column name of the Barcode sequences
+
+--output-dir : output directory with the demultiplexed samples and error correction details
+
+--p-no-golay-error-correction: by default perform a correction with a barcode of 12 nt if not use this option (in our case is 16 nt)
+
+**Step 3: REMOVE PRIMERS AND VISUALIZATION**
+
+``` {.bash}
+qiime cutadapt trim-paired \
+--i-demultiplexed-sequences demux_STE1/per_sample_sequences.qza \
+--p-cores 4 --p-front-f TTAGCATGGAATAATRRAATAGGA \
+--p-front-r TCTGGACCTGGTGAGTTTCC  \
+--o-trimmed-sequences demux_STE1_trimmed.qza
+```
+
+--i-demultiplexed-sequences : demultiplexed sequences (.qza artifact)
+
+--p-cores : number of threads
+
+--p-front-f : forward primer sequences (front if is in the beginning of the sequences)
+
+--p-front-r : reverse primer sequences (front if is in the beginning of the sequences)
+
+--o-trimmed-sequences : output
+
+``` {.bash}
+qiime demux summarize \
+--i-data  demux_STE1_trimmed.qza
+--o-visualization demux_STE1_trimmed.qzv
+```
+
+--i-data : demultiplexed and/or trimmed sequences
+
+--o-visualization : output
+
+In this case, due to de the low quality of reverse reads we will continue with the forward sequences and let's set the truncation length of 240 bp.
+
+**Step 4: RUN DADA2**
+
+In this step, we will perform as an example a loop that can be used in the previous steps and the next ones:
+
+``` {.bash}
+for i in demux_STE1_trimmed.qza demux_STE2_trimmed.qza demux_STE3.qza \
+demux_STE4.qzA demux_STE5_trimmed.qza; 
+do qiime dada2 denoise-single \
+--i-demultiplexed-seqs $i -\
+-p-trunc-len 240 \
+--output-dir dada_single_240_$i; done
+```
+
+--i-demultiplexed-seqs : demultiplexed and trimmed sequences
+
+-p-trunc-len 240 : length to trunc sequences to obtain good quality (usually when sequencing drops)
+
+--output-dir : output directory that will contain feature-table and representative sequences
+
+**Step 5: MERGING TABLES AND SEQUENCES**
+
+First, merge tables and seqs:
+
+``` {.bash .bahs}
+qiime feature-table merge \
+--i-tables dada_single_240_demux_STE1_trimmed/table.qza \
+--i-tables dada_single_240_demux_STE2_trimmed/table.qza \
+--i-tables dada_single_240_demux_STE3_trimmed/table.qza \
+--i-tables dada_single_240_demux_STE4_trimmed/table.qza \
+--i-tables dada_single_240_demux_STE5_trimmed/table.qza \
+--o-merged-table merge_table_240.qza
+```
+
+--i-tables : table to merge (put every time you want to add a different table)
+
+--o-merged-table : output/merge table
+
+``` {.bash}
+qiime feature-table merge-seqs \
+--i-data dada_single_240_demux_STE1_trimmed/representative_sequences.qza \
+--i-data dada_single_240_demux_STE2_trimmed/representative_sequences.qza \
+--i-data dada_single_240_demux_STE3_trimmed/representative_sequences.qza \
+--i-data dada_single_240_demux_STE4_trimmed/representative_sequences.qza \
+--i-data dada_single_240_demux_STE5_trimmed/representative_sequences.qza \
+--o-merged-data merge_seqs_dada_240.qza
+```
+
+--i-data : sequences to merge (put every time you want to add a different sequence)
+
+--o-merged-data : output/merge sequences
+
+Then, let's visualize them:
+
+``` {.bash .bahs}
+qiime feature-table summarize \
+--i-table merge_table_240.qza\
+--m-sample-metadata-file MAPPINGS/FINALMAP18S 
+--o-visualization merge_table_240.qzv \
+```
+
+--i-table : merged table
+
+--m-sample-metadata-file : mapping file containing all libraries
+
+--o-visualization : output/ visualization artifact
+
+``` {.bash}
+qiime metadata tabulate  \
+--m-input-file merge_seqs_dada_240.qza \
+--o-visualization merge_seqs_dada_240.qzv\
+```
+
+--m-input-file : merged sequences
+
+--o-visualization : output/ visualization artifact
+
+**Step 6: ASSIGN TAXONOMY**
+
+``` {.bash}
+qiime feature-classifier classify-consensus-blast \
+--i-query merge_seqs_dada_240.qza \
+--i-reference-taxonomy /home/steph/Descargas/silva-138-99-tax.qza \
+--i-reference-reads /home/steph/Descargas/silva-138-99-seqs.qza \
+--o-classification taxonomy_blast_240_0.97.qza --p-perc-identity 0.97
+```
+
+classify-consensus-blast : using blast (other options are vsearch and sklearn)
+
+--i-query : seqs merged
+
+--i-reference-taxonomy : artifact imported of taxonomy silva reference database
+
+--i-reference-reads : artifact imported of reads silva reference database
+
+--o-classification output artifact with taxonomy
+
+--p-perc-identity : percent of identity
+
+**Step 7: FILTERING AND GROUPING TABLE**
+
+-   **Removing taxa of Plants**
+
+    I checked the feature table and the division Phragmoplastophyta is all assigned to plants
+
+``` {.bash}
+ qiime taxa filter-table \
+ --i-table merge_table_240.qza \
+ --i-taxonomy taxonomy_blast_240_0.97.qza \
+ --p-exclude Phragmoplastophyta \
+ --o-filtered-table merge_table_240_noplant.qza
+```
+
+--i-table : merge table
+
+--i-taxonomy : taxonomy (from assign taxonomy)
+
+--p-exclude : taxa to exclude
+
+--o-filtered-table : output/artifact
+
+-   **Filtering initial treatmens and min frequency**
+
+``` {.bash}
+qiime feature-table  filter-samples \
+--i-table merge_table_240_noplant.qza \
+--m-metadata-file ../../MAPPINGS/FINALMAP_GROUPED.txt \
+--p-where "[Treatments]='T0'" --p-exclude-ids --p-min-frequency 520\
+--o-filtered-table merge_table_240_noplant_filtered.qza  
+```
+
+--i-table : input table
+
+--m-metadata-file : mapping file
+
+--p-where ("[Treatments]='T0'" ) : sql code to indicate what column and condition to filter
+
+--p-exclude-ids : to indicate that we will exclude base on the conditions (if not it will retain the data from the condition)
+
+--p-min-frequency : min frequency to retain (sampling depth)
+
+--o-filtered-table : output/table filtered
+
+-   **Filtering Uncultivated samples**
+
+``` {.bash}
+qiime feature-table  filter-samples \
+--i-table merge_table_240_noplant_filtered.qza \
+--m-metadata-file ../../MAPPINGS/FINALMAP_GROUPED.txt \
+--p-where "[Type_of_soil]='Uncultivated'" --p-exclude-ids \
+--o-filtered-table merge_table_240_noplant_filtered_nous.qza 
+```
+
+--i-table : input table
+
+--m-metadata-file : mapping file
+
+--p-where ("[Type_of_soil]='Uncultivated'" ) : sql code to indicate what column and condition to filter
+
+--p-exclude-ids : to indicate that we will exclude base on the conditions (if not it will retain the data from the condition)
+
+--o-filtered-table : output/table filtered
+
+-   **Grouping table (joining replicates and filtering)**
+
+grouped_table_240.qza
+
+``` {.bash}
+qiime feature-table group \
+--i-table merge_table_240.qza\
+--m-metadata-file ../../../MAPPINGS/FINALMAP18s.tsv \
+--m-metadata-column group \
+--p-mode sum --p-axis sample\
+--o-grouped-table grouped_table_240.qza 
+```
+
+--i-table : input table
+
+--m-metadata-file: metadata file
+
+--m-metadata-column : column name from the metadata
+
+--p-mode : mode of joining samples (in this case, sum the counts, other choices median, mean)
+
+--p-axis : Along which axis to group (it can be features or sample)
+
+--o-grouped-table : output/table
+
+Now, let's filter this grouped table (as we did before, see parameters in the previous steps):
+
+``` {.bash}
+ qiime taxa filter-table \
+ --i-table mgrouped_table_240.qza  \
+ --i-taxonomy taxonomy_blast_240_0.97.qza \
+ --p-exclude Phragmoplastophyta \
+ --o-filtered-table grouped_table_240_noplant.qza
+```
+
+``` {.bash}
+qiime feature-table  filter-samples \
+--i-table grouped_table_240_noplant.qza \
+--m-metadata-file ../../MAPPINGS/FINALMAP_GROUPED.txt \
+--p-where "[Treatments]='T0'" --p-exclude-ids --p-min-frequency 1500 \
+--o-filtered-table grouped_table_240_filt_noplant.qza  
+```
+
+``` {.bash}
+qiime  feature-table filter-samples \
+--i-table grouped_240_fil_noplant.qza \
+--p-where "[Type_of_soil]='Uncultivated'" \
+--m-metadata-file ../../MAPPINGS/FINALMAP_GROUPED.txt \
+--p-exclude-ids \
+--o-filtered-table grouped_240_fil_noplant_nous.qza
+```
+
+**Step 8: FILTERING SEQUENCES**
+
+For this step we will filter the representative sequences base on the table filtered.
+
+``` {.bash}
+qiime  feature-table filter-seqs \
+--i-data seqs_and_taxonomy/merge_seqs_dada_240.qza \
+--i-table merge_table_240_noplant_filtered_nous.qza  \
+--o-filtered-data seqs_and_taxonomy/merge_seqs_dada_240_noplant_filtered_nous.qza
+
+qiime  feature-table filter-seqs \
+--i-data seqs_and_taxonomy/merge_seqs_dada_240.qza \
+--i-table grouped_240_fil_noplant_nous.qza \
+--o-filtered-data seqs_and_taxonomy/grouped_seqs_dada_240_noplant_filtered_nous.qza
+```
+
+--i-data : input sequences
+
+--i-table : input table use to filter
+
+--o-filtered-data : output/filtered sequences
+
+**Step 9: BUILDING THE TREE**
+
+For this step we will build the phylogenetic tree *denovo.*
+
+``` {.bash}
+qiime phylogeny align-to-tree-mafft-fasttree  \
+--i-sequences merge_seqs_dada_240_noplant_filtered_nous.qza  \
+--output-dir tree_merge
+
+qiime phylogeny align-to-tree-mafft-fasttree  \
+--i-sequences grouped_seqs_dada_240_noplant_filtered_nous.qza  \
+--output-dir tree_grouped
+```
+
+--i-sequences : sequences filtered
+
+--output-dir : output director that will contain the alignment, masked alignment, the tree and the rooted treed.
+

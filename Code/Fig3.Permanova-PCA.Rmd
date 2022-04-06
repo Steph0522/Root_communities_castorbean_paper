@@ -1,0 +1,434 @@
+---
+title: "PCAs and PerMANOVAs"
+author: 
+- name: Stephanie Hereira
+  affiliation: Centro de Investigación y estudios avanzados del IPN
+  email: shereirap@cinvestav.mx
+date: "`r format(Sys.time(), '%d - %m - %Y')`"
+output:
+  html_document:
+    theme: united
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+```{r, warning=FALSE, message=FALSE}
+#loading libraries
+library(qiime2R)
+library(tidyverse)
+library(cowplot)
+library(FactoMineR)
+library(vegan)
+library(ggpubr)
+library(zCompositions)
+library(compositions)
+
+```
+
+PCA plot all
+```{r, warning=FALSE, message=FALSE}
+#load file and correct zero values
+table_240<- read_qza("../../Data/merge_table_240_noplant_filtered_nous.qza")$data %>% 
+  as.data.frame()
+
+taxonomy_240<- read_qza("../Data/taxonomy_blast_240_0.97.qza")$data
+
+#remove non-fungi taxa
+
+taxonomy_filter<- taxonomy_240 %>% filter(
+  !str_detect(Taxon, "ozoa"))%>% filter(
+  !str_detect(Taxon, "helida")) %>% filter(
+  !str_detect(Taxon, "ophyta")) %>% filter(
+  !str_detect(Taxon, "Ciliophora")) %>% filter(
+  !str_detect(Taxon, "Nucleariidae_and_Fonticula_group")) %>% filter(
+  !str_detect(Taxon, "Arthrioida")) %>% filter(
+  !str_detect(Taxon, "Labyrinthulomycetes"))  %>% filter(
+  !str_detect(Taxon, "Apicomplexa")) %>% filter(
+  !str_detect(Taxon, "Bicosoecida")) %>% filter(
+  !str_detect(Taxon, "Breviatea")) %>% filter(
+  !str_detect(Taxon, "Aphelidea"))  %>% filter(
+  !str_detect(Taxon, "Arthropoda")) 
+
+table_filter<-  table_240[match(
+  taxonomy_filter$Feature.ID, rownames(table_240)),] %>% drop_na(.)
+
+d.pro.0<- table_filter %>% dplyr::select_at(vars(!contains("US")))
+d.pro <- t(cmultRepl(t(d.pro.0), method="CZM", output="p-counts"))
+
+# make our compositional and run pca function
+d.clr.abund <- t(apply(d.pro, 2, function(x){log(x) - mean(log(x))}))
+pcx.abund <- prcomp(d.clr.abund)
+
+
+#load metadata and taxonomy file
+meta<-read_tsv(
+  file = "/home/steph/Documents/Documentos/fastas nuevos/18S/MAPPINGS/FINALMAP18S") %>% 
+  rename(SampleID=`#SampleID`) %>%
+  filter(SampleID!="#q2:types")
+
+meta$Compartment<- factor(meta$Type_of_soil,
+                   levels = c( "Non-rizospheric", "Rizospheric", 
+                               "Roots", "Uncultivated"),
+                   labels = c("Bulk soil", "Rhizosphere",
+                              "Roots", "Uncultivated"))
+meta$Water_regime<- factor(meta$Treatment,
+                        levels = c( "0", "1", "2", "3"),
+                        labels = c("Initial","Wet", "Dry", "Extreme dry"))
+
+
+tax<-read_qza("../Data/taxonomy_blast_240_0.97.qza")$data %>%
+  rename(FeatureID=Feature.ID)
+
+#Construsting PCA
+
+#LABELS
+PC1 <- paste("PC1", round(sum(pcx.abund$sdev[1] ^ 2) /
+                            mvar(d.clr.abund) * 100, 2), "%")
+PC2 <- paste("PC2", round(sum(pcx.abund$sdev[2] ^ 2) / 
+                            mvar(d.clr.abund) * 100, 2), "%")
+
+#SHAPES AND COLOR OF ARROWS
+
+
+vars_chosen<- c("588a0e16a32970569d10c88aaa93f050", 
+                "81979356618c524328e9a9fc41c30906",
+                "ab657f069eebbddfa32f5fd2609e4b24", 
+                "0147e304b1ce1be9c4ff15b660605ef2",
+                "1db96e3e66ec1535d586d1a3a954cb66")
+
+
+vars_choosing<- data.frame(pcx.abund$rotation)%>%  rownames_to_column(
+  var = "FeatureID")%>%
+  filter(FeatureID %in% vars_chosen) %>%  mutate(a=sqrt(PC1^2+PC2^2)) %>%
+  mutate(PC1=PC1*40, PC2=PC2*40) %>% left_join(tax)%>% dplyr::select(
+    Taxon, PC1, PC2, FeatureID)%>%mutate(tax= str_extract(Taxon, "[^_]+$")) %>% 
+  mutate_at(c("tax"), funs(tax = case_when(
+    tax=="herbarum" ~ "Cladosporium herbarum",
+    TRUE~as.character(tax))))
+
+color_type<- c("#800000", "#808000", "#008000", "#D35400", "#2E4053")
+
+pca<- ggplot() +
+  theme_bw()+
+  xlab(PC1) +
+  ylab(PC2) +
+  geom_segment(data = vars_choosing, aes(x = 0, y = 0, xend = PC1, yend = PC2), 
+               arrow=arrow(length=unit(0.15,"cm")),
+               alpha = 0.75, color = 'black', size= 0.6)+
+  theme(axis.text = element_text(colour = "black", size = 14),
+        axis.title = element_text(colour = "black", size = 14),
+         legend.text = element_text(size = 9),
+        axis.ticks = element_line(colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.text.y.right = element_text(colour = "black"),
+        axis.text.x.top = element_text(colour = "black"),
+        legend.position = "top", 
+        legend.box = "vertical",
+        legend.direction = "horizontal",
+        legend.spacing.y = unit(0.01, 'cm'),
+        legend.title = element_blank()) +
+  geom_point(                              
+    data=data.frame(pcx.abund$x) %>%   rownames_to_column(var = "SampleID")%>%
+      left_join(meta, by = "SampleID") %>% filter(!Compartment =="NA"),
+    aes(x=PC1, y=PC2, color=Compartment, shape=Water_regime), 
+     size=5) + geom_vline(xintercept = 0, linetype = 2) +   
+  geom_hline(yintercept = 0, linetype = 2)+
+  scale_color_manual(values = color_type) +
+  scale_x_continuous(limits = c(-20,20))+
+  ggrepel::geom_label_repel(data = vars_choosing, aes(x=PC1, y=PC2, label= tax),
+  segment.colour = NA, col = 'black', fill= "#EEEEEE",
+  fontface="italic",  box.padding = 0.6, size=4)+ theme(
+  plot.margin = unit(c(0.5, 1.5, 0.4, 0.1), "cm"))+
+  guides(colour = guide_legend(override.aes = list(size=3)), 
+         shape = guide_legend(override.aes = list(size = 3)))+
+  theme(legend.text = element_text(size = 12))
+
+pca
+```
+
+PERMANOVAs
+```{r,message=FALSE, warning=FALSE}
+
+d.clr.abund2<- data.frame(d.clr.abund, check.names = F) %>% rownames_to_column(
+  var = "ids") %>% filter(!str_detect(ids, 'US')) %>% column_to_rownames(
+    var = "ids")
+
+meta_just<- data.frame(d.clr.abund2, check.names = F) %>% rownames_to_column(
+  var = "SampleID") %>% inner_join(meta) 
+
+
+perm<- how(nperm = 999)
+setBlocks(perm)<- with(meta_just, Plot)
+ad_grouped<-adonis2(d.clr.abund2~Water_regime*Compartment,
+                    data = meta_just, method = "euclidian", 
+                    permutations =999) %>% round(
+                      ., digits = 3) %>%replace(is.na(.), "-")
+
+
+
+Permanova_grouped<-data.frame(ad_grouped, check.names = F) %>% rownames_to_column(
+  var="Factor") %>% ggtexttable(., rows = NULL, theme = ttheme("blank")) %>%
+  tab_add_hline(at.row = 1:2, row.side = "top", linewidth = 2)%>%
+  table_cell_font(., row = 3, column = 6, face = "bold") %>% 
+  table_cell_font(., row = 2, column = 6, face = "bold") %>% 
+  tab_add_hline(at.row = c(6), row.side = "bottom", 
+                linewidth = 3, linetype = 1) %>%
+  tab_add_footnote(
+    text = "*p values in Bold are significant using \n an alpha value of 0.05",
+    size = 10, face = "italic")
+
+Permanova_grouped
+
+
+#ggsave('../../Figures_final/paired_perma.pdf',
+ #   width = 6, height = 2, dpi = 300, plot =Pairwsie_permanova_grouped)
+#ggsave('../../Figures_final/pca_all.pdf',
+ #    width = 6, height = 2, dpi = 300, plot =pca)
+
+
+```
+
+```{r, fig.height=8, fig.width=6}
+
+b<-cowplot::plot_grid(pca,Permanova_grouped, 
+                      nrow=2, rel_heights = c(1.8,1), 
+                      labels = c("A", "B"), label_size = 18)
+
+b
+
+#ggsave('../../Figures_final/beta.png',
+#      width = 14, height = 9.5, dpi = 300, plot =c)
+
+```
+
+Water regime PCA AND PERMANOVA
+
+```{r, fig.width=14, fig.height=8, warning=FALSE, message=FALSE}
+#barplots
+
+table_all<- data.frame(read_qza(
+  "../Data/merge_table_240_noplant_filtered_nous.qza")$data ,
+                       check.names = F) 
+
+taxonomy<- read_qza("../Data//taxonomy_blast_240_0.97.qza")$data
+metadata<- read_tsv("../Data/FINALMAP18S") %>% dplyr::select(
+  -Month)
+
+metadata$Compartment<- factor(
+  metadata$Type_of_soil,
+  levels = c( "non-rizospheric", "Non-rizospheric", "Rizospheric", 
+              "Roots", "Seeds", "Uncultivated"),
+  labels = c("Initials", "Non-rhizospheric" ,"Rhizoshpere",
+             "Roots", "Initials", "Uncultivated"))
+
+metadata$Water_regime<- factor(metadata$Treatment,
+                       levels = c( "0", "1", "2", "3"),
+                       labels = c("Initials", "Wet" ,"Dry", "Extreme-dry"))
+
+#ALL
+table_all_ro<- table_filter %>% dplyr::select_at(vars(
+  matches("RO"))) %>% t()%>% as.data.frame(  )%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata)  %>% group_by(
+    Water_regime) %>% summarise_at(c(2:152), mean) %>% column_to_rownames(
+      var = "Water_regime") %>% t()
+
+table_all_ri<- table_filter %>% dplyr::select_at(vars(
+  matches("RI"))) %>% t()%>% as.data.frame(
+  )%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata)  %>% group_by(
+    Water_regime) %>% summarise_at(c(2:152), mean) %>% column_to_rownames(
+      var = "Water_regime") %>% t()
+
+table_all_nr<- table_filter%>% dplyr::select_at(vars(
+  matches("NR"))) %>% t()%>% as.data.frame(
+  )%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata)  %>% group_by(
+    Water_regime) %>% summarise_at(c(2:152), mean) %>% column_to_rownames(
+      var = "Water_regime") %>% t()
+
+
+
+#PCA'S
+all_ro<- table_filter %>% dplyr::select_at(vars(
+  matches("RO"))) %>% t()%>% as.data.frame(
+)%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata) %>%arrange(
+    Water_regime) %>% filter(
+    !Water_regime=="T0") %>%  dplyr::select(
+    -BarcodeSequence:-Water_regime) %>% column_to_rownames(
+      var = "#SampleID") %>% t()
+
+all_ri<- table_filter %>% dplyr::select_at(vars(
+  matches("RI"))) %>% t()%>% as.data.frame(
+)%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata) %>%arrange(
+    Water_regime) %>% filter(
+    !Water_regime=="T0") %>%  dplyr::select(
+    -BarcodeSequence:-Water_regime) %>% column_to_rownames(
+      var = "#SampleID") %>% t()
+
+all_nr<- table_filter %>% dplyr::select_at(vars(
+  matches("NR"))) %>% t()%>% as.data.frame(
+)%>% rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata) %>%arrange(
+    Water_regime) %>% filter(
+    !Water_regime=="T0") %>%  dplyr::select(
+    -BarcodeSequence:-Water_regime) %>% column_to_rownames(
+      var = "#SampleID") %>% t()
+
+list_pca<- list(all_ro, all_ri, all_nr)
+zero_func <- function(x){ t(cmultRepl(t(x), method="CZM", output="p-counts"))}
+clr_func<-function(x){t(CoDaSeq::codaSeq.clr(x ,samples.by.row = F))}
+
+zero_list<- lapply(list_pca, zero_func)
+clr_list<- lapply(zero_list, clr_func)
+pcx.abund_list <- lapply(clr_list, prcomp)
+
+#create the base plot with only the arrows
+PC1.f<- function(x,y){paste("PC1", round(sum(x$sdev[1] ^ 2) / 
+                                           mvar(y) * 100, 1), "%")}
+PC2.f <- function(x,y){paste("PC2", round(sum(x$sdev[2] ^ 2) / 
+                                            mvar(y) * 100, 1), "%")}
+
+PC1_all<- mapply(PC1.f, pcx.abund_list, clr_list)
+PC2_all<- mapply(PC2.f, pcx.abund_list, clr_list)
+
+list2<- list(pcx.abund_list[[1]],pcx.abund_list[[2]] , pcx.abund_list[[3]])
+
+pca_tables2<- function(tab){ggplot() +
+    geom_segment(data=data.frame(tab$rotation) %>%  
+                   rownames_to_column(var = "FeatureID")%>%  
+                   mutate(a=sqrt(PC1^2+PC2^2)) %>% 
+                   top_n(15, a) %>%
+                   mutate(PC1=PC1*20, PC2=PC2*20),
+                 aes(x=0, xend=PC1, y=0, yend=PC2),
+                 arrow = arrow(length = unit(0.3,"cm")))+
+    geom_point(data=data.frame(tab$x) %>%
+                 rownames_to_column(var = "#SampleID")%>%
+                 left_join(metadata, by = "#SampleID"),
+               aes(x=PC1, y=PC2, fill=Water_regime),shape=21, size=4) +
+    geom_vline(xintercept = 0, linetype = 2) + 
+    geom_hline(yintercept = 0, linetype = 2) +theme_light()+
+    scale_x_continuous(limits = c(-25,25))+
+    scale_y_continuous(limits = c(-20,20))+
+    scale_fill_manual(values = c("#479330","#FFFF00", "#FF0000"))+ 
+  theme(axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 10),
+         legend.text = element_text(size = 10),
+        axis.ticks = element_line(colour = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.text.y.right = element_text(colour = "black"),
+        axis.text.x.top = element_text(colour = "black"),
+        legend.position = "top", 
+        legend.direction = "vertical",
+        legend.box = "vertical",
+        legend.title = element_blank())  }
+
+figures_pca2<- lapply(list2, pca_tables2)
+pca_ro_all<- figures_pca2[[1]]+ xlab(PC1_all[[1]]) +ylab(PC2_all[[1]])  + theme(
+  legend.position="top", legend.title=element_blank())
+pca_ri_all<- figures_pca2[[2]]+ xlab(PC1_all[[2]]) +ylab(PC2_all[[2]])  + theme(
+  legend.position="top", legend.title=element_blank())
+pca_nr_all<- figures_pca2[[3]]+ xlab(PC1_all[[3]]) +ylab(PC2_all[[3]]) + theme(
+  legend.position="top", legend.title=element_blank())
+
+
+pca_allthree<- plot_grid(pca_ro_all, pca_ri_all, pca_nr_all,ncol = 3,
+labels = c("C                    Roots", "E            Rhizosphere",
+           "G               Bulk soil"), rel_widths = c(1,1,1) )
+
+
+
+#PERMANOVA'S
+clr_function_perma<-function(x){data.frame(x, check.names = F) %>%
+    rownames_to_column(
+  var = "ids")%>% column_to_rownames(var = "ids")} 
+
+meta_just_func2<- function(x){data.frame(x, check.names = F) %>%
+    rownames_to_column(
+  var = "#SampleID") %>% inner_join(metadata)}
+clr_perma<- lapply(clr_list, clr_function_perma)
+meta_just_list2<- lapply(clr_perma, meta_just_func2)
+
+
+
+
+library(vegan)
+perm<- how(nperm = 999)
+
+setBlocks(perm)<- with(meta_just_list2[[1]], Plot)
+a5<-adonis2(clr_perma[[1]]~Water_regime, data = meta_just_list2[[1]], method = 
+              "euclidian", permutations =perm) %>% round(., digits = 2) %>%replace(
+                is.na(.), "-")
+
+
+setBlocks(perm)<- with(meta_just_list2[[2]], Plot)
+a6<-adonis2(clr_perma[[2]]~Water_regime, data = meta_just_list2[[2]], method = 
+              "euclidian", permutations =perm) %>% round(., digits = 2) %>%replace(
+                is.na(.), "-")
+setBlocks(perm)<- with(meta_just_list2[[3]], Plot)
+a7<-adonis2(clr_perma[[3]]~Water_regime, data = meta_just_list2[[3]], method =
+              "euclidian", permutations =perm) %>% round(., digits = 2) %>%replace(
+                is.na(.), "-")
+
+
+library(ggpubr)
+
+Permanova_a5<-data.frame(a5, check.names = F) %>% rownames_to_column(
+  var="Factor") %>% ggtexttable(., rows = NULL, theme = ttheme(
+    "blank", base_size = 10)) %>%
+  tab_add_hline(at.row = 1:2, row.side = "top", linewidth = 2)%>%
+  tab_add_hline(at.row = c(4), row.side = "bottom", linewidth = 3, linetype = 1) 
+
+Permanova_a6<-data.frame(a6, check.names = F) %>% rownames_to_column(
+  var="Factor") %>% ggtexttable(., rows = NULL, theme = ttheme(
+    "blank", base_size = 10)) %>%
+  tab_add_hline(at.row = 1:2, row.side = "top", linewidth = 2)%>%
+  tab_add_hline(at.row = c(4), row.side = "bottom", linewidth = 3, linetype = 1) 
+
+Permanova_a7<-data.frame(a7, check.names = F) %>% rownames_to_column(
+  var="Factor") %>% ggtexttable(., rows = NULL,theme = ttheme(
+    "blank", base_size = 10)) %>%
+  tab_add_hline(at.row = 1:2, row.side = "top", linewidth = 2)%>%
+  tab_add_hline(at.row = c(4), row.side = "bottom", linewidth = 3, linetype = 1) 
+
+#all
+perm_all_three<- plot_grid(Permanova_a5, Permanova_a6, Permanova_a7, 
+                           ncol = 3, labels = c("D", "F", "H"), label_y = 0.8)
+
+
+pca_ro_all<- pca_ro_all+ theme(legend.position="top",
+                               legend.direction="horizontal")
+legends<- get_legend(pca_ro_all)
+pca_allthree<- plot_grid(NULL,legends, NULL, 
+                 pca_ro_all+theme(legend.position = "none"),
+                 pca_ri_all+theme(legend.position = "none"), 
+                 pca_nr_all+theme(legend.position = "none"), 
+                 nrow = 2, ncol = 3, rel_heights = c(0.5,2),
+                 labels = c("","","","C                    Roots",
+                            "E            Rhizosphere", 
+                            "G               Bulk soil"), 
+                 rel_widths = c(1,1,1), label_x = -0.16, 
+                 label_y = 1, hjust = -0.5, vjust = -0.5 )
+
+
+plot_all_three<- plot_grid( pca_allthree, perm_all_three,
+                            nrow = 2, rel_heights = c(1.5,1))
+
+plot_all_three
+
+```
+
+```{r, fig.width=16, fig.height=8}
+#joinning plots
+per_pca<-plot_grid(b,plot_all_three, rel_widths =  c(1,2))
+per_pca
+
+#ggsave('../../Figures_final/Fig2.Permanova_PCA_NEW.png',
+ # width = 16, height = 8, dpi = 300, plot =per_pca)
+#ggsave('../../Figures_final/Permanova-pairwise_filt.pdf',
+ #   width = 6, height = 4, dpi = 300, plot =Pairwsie_permanova)
+```
+
