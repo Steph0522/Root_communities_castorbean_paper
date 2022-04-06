@@ -1,1 +1,1 @@
-This is the link to the future post of the scripts of the paper: "Shifts in root-associated fungal communities under drought conditions in Ricinus communis L."
+Scripts of the paper under review: "Shifts in root-associated fungal communities under drought conditions in Ricinus communis L."
