@@ -1,0 +1,110 @@
+---
+title: "Phenolic content"
+author: 
+- name: Stephanie Hereira
+  affiliation: Centro de Investigación y estudios avanzados del IPN
+  email: shereirap@cinvestav.mx
+date: "`r format(Sys.time(), '%d - %m - %Y')`"
+output:
+  html_document:
+    theme: united
+    highlight: tango
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+```{r, warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+#PHENOLIC CONTENT
+library(tidyverse)
+library(ggpubr)
+library(viridis)
+library(cowplot)
+pallete = c("#479330", "#FFFF00", "#FF0000")
+
+
+fenoles<- readxl::read_excel("../Data/FENOLES_FINAL.xlsx", sheet = 1, range = "A1:G82")
+fenoles$Time <- factor(fenoles$tiempo,
+                       levels = c("0", "2", "4", "6"),
+                       labels = c("day0", "2 months", "4 months", "6 months"))
+fenoles$Treatment <- factor(fenoles$T,
+                            levels = c("1", "2", "3"),
+                            labels = c("Wet", "Dry", "Extreme dry"))
+
+
+
+q<- fenoles %>% filter(Time == "2 months") %>% ggboxplot(
+  ., x = "Treatment", y = "hojas",outlier.shape = NA,
+  palette = pallete, color= "black", fill = "Treatment", 
+  xlab = "Time" , 
+  ylab = "mg GAE / g dry of leaves")
+
+q1<-q + stat_compare_means(aes(group= Treatment), label.y = 85)+ 
+  font("legend.title", size = 8)+
+  font("legend.text", size = 8)+theme(
+    axis.title.x = element_blank(), 
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text = element_text(size = 16),
+         axis.title.y = element_text(size = 16))
+
+
+
+r<-  fenoles %>% filter(Time == "2 months") %>% 
+  ggboxplot(
+  ., x = "Treatment", y = "raices", 
+  palette = pallete, color= "black", fill = "Treatment",
+  legend="none",outlier.shape = NA,
+  xlab = "Time", ylab = "mg GAE / g dry of roots")
+r1<-r +  stat_compare_means(aes(group= Treatment), label.y = 30)+
+  theme(
+      axis.title.x = element_blank(), 
+  axis.ticks = element_blank(),
+  axis.text = element_text(size = 16),
+         axis.title.y = element_text(size = 16))+scale_y_continuous(limits = c(0,35))
+
+
+pallete2<- viridis_pal()(3)
+
+fenoles2<- fenoles %>% gather(raices:hojas ,key = "parte", value = "fenoles")
+colnames(fenoles2)
+head(fenoles2)
+fenoles2$Part <- factor(fenoles2$parte,
+                        levels = c("raices", "hojas"),
+                        labels = c("Roots", "Leaves"))
+
+s<-fenoles2 %>% filter(Time == "2 months") %>% ggboxplot(
+  ., x = "Part", y = "fenoles", outlier.shape = NA,
+  palette = pallete2, color= "black", fill = "Part",
+  xlab = "Part of the plant", 
+  ylab = "mg GAE/ g dry weight")
+
+s1<-s +   stat_compare_means(label.y = 73, show.legend = F, aes(
+  label = paste0("Mann-Whitney U, p =", ..p.format..)))+ 
+  font( "legend.title", size = 16)+
+  font("legend.text", size = 16) +
+  theme(legend.key.height= unit(4, 'mm'),legend.title = element_blank(),
+        legend.key.width= unit(4, 'mm'),legend.position = "none")+
+  theme( axis.title.x = element_blank(), 
+         axis.ticks = element_blank(), 
+         axis.text = element_text(size = 16),
+         axis.title.y = element_text(size = 16))+
+  scale_y_continuous(limits = c(0,75))
+
+
+
+
+#joinning plots
+
+
+third<- plot_grid(s1, q1,
+                  r1, ncol = 3, align = "vh",axis = "l",
+                  labels = c( "a)","b)", "c)"), label_size = 20)
+
+third
+
+#ggsave('../../Figures_final/Fig6.tiff', width = 12, height = 5, dpi = 300, plot = third)
+
+
+```
+
