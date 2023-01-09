@@ -81,40 +81,40 @@ intra_nr_dry_q2<- read.csv(
 
 intra_ro_exdry_q0<- read.csv(
   "../Data/beta/Beta_diversityro/Intra_Beta_Similarity-q=0-table_exdry_ro.txt.csv") %>% mutate(
-    qs="q0")%>% mutate(type="Extremely \n dry")
+    qs="q0")%>% mutate(type="Extreme-dry")
 intra_ro_exdry_q1<- read.csv(
   "../Data/beta/Beta_diversityro/Intra_Beta_Similarity-q=1-table_exdry_ro.txt.csv") %>% mutate(
-    qs="q1")%>% mutate(type="Extremely \n dry")
+    qs="q1")%>% mutate(type="Extreme-dry")
 intra_ro_exdry_q2<- read.csv(
   "../Data/beta/Beta_diversityro/Intra_Beta_Similarity-q=2-table_exdry_ro.txt.csv") %>% mutate(
-    qs="q2")%>% mutate(type="Extremely \n dry")
+    qs="q2")%>% mutate(type="Extreme-dry")
 
 intra_ri_exdry_q0<- read.csv(
   "../Data/beta/Beta_diversityri/Intra_Beta_Similarity-q=0-table_exdry_ri.txt.csv") %>% mutate(
-    qs="q0")%>% mutate(type="Extremely \n dry")
+    qs="q0")%>% mutate(type="Extreme-dry")
 intra_ri_exdry_q1<- read.csv(
   "../Data/beta/Beta_diversityri/Intra_Beta_Similarity-q=1-table_exdry_ri.txt.csv") %>% mutate(
-    qs="q1")%>% mutate(type="Extremely \n dry")
+    qs="q1")%>% mutate(type="Extreme-dry")
 intra_ri_exdry_q2<- read.csv(
   "../Data/beta/Beta_diversityri/Intra_Beta_Similarity-q=2-table_exdry_ri.txt.csv") %>% mutate(
-    qs="q2")%>% mutate(type="Extremely \n dry")
+    qs="q2")%>% mutate(type="Extreme-dry")
 
 intra_nr_exdry_q0<- read.csv(
   "../Data/beta/Beta_diversitynr/Intra_Beta_Similarity-q=0-table_exdry_nr.txt.csv") %>% mutate(
-    qs="q0")%>% mutate(type="Extremely \n dry")
+    qs="q0")%>% mutate(type="Extreme-dry")
 intra_nr_exdry_q1<- read.csv(
   "../Data/beta/Beta_diversitynr/Intra_Beta_Similarity-q=1-table_exdry_nr.txt.csv") %>% mutate(
-    qs="q1")%>% mutate(type="Extremely \n dry")
+    qs="q1")%>% mutate(type="Extreme-dry")
 intra_nr_exdry_q2<- read.csv(
   "../Data/beta/Beta_diversitynr/Intra_Beta_Similarity-q=2-table_exdry_nr.txt.csv") %>% mutate(
-    qs="q2")%>% mutate(type="Extremely \n dry")
+    qs="q2")%>% mutate(type="Extreme-dry")
 ```
 
 Plot
 
 ```{r, warning=FALSE, message=FALSE, fig.height=10}
 library(ggpubr)
-my_comparisons <- list( c("Wet", "Dry"), c("Wet", "Extremely \n dry"), c("Dry", "Extremely \n dry") )
+my_comparisons <- list( c("Wet", "Dry"), c("Wet", "Extreme-dry"), c("Dry", "Extreme-dry") )
 
 
 intra_ro<- rbind(intra_ro_wet_q0, intra_ro_dry_q0, intra_ro_exdry_q0,
@@ -124,8 +124,8 @@ intra_ro<- rbind(intra_ro_wet_q0, intra_ro_dry_q0, intra_ro_exdry_q0,
 i1a<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs=="q0")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   facet_grid(.~part, scales = "free")+xlab("")+
-  ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  ylab("Relative turnover ratio of ASVs")+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   #stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -139,20 +139,19 @@ i1a<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs==
         axis.line= element_line(colour = "black"), 
         axis.line.y.right = element_line(colour = "black" ),
        text = element_text(size = 14),
-                  axis.title.y.left = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
         axis.text = element_text(colour = "black", size = 10))+
   scale_y_continuous(limits = c(0, 1.5))+theme(
      strip.text.y = element_text(
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
 i1d<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs=="q1")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   #facet_grid(.~part, scales = "free")+xlab("")+
   ylab("Relative turnover ratio of ASVs")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -171,17 +170,16 @@ i1d<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs==
     axis.title.x = element_blank()  )+theme(
      strip.text.y = element_text(
         size = 16, face = "italic"
-        ), axis.title.y = element_text(size = 16),
-           axis.title.y.left = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+        ),
       strip.text.x = element_text(
-        size = 16 ))
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
 
 i1g<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs=="q2")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
  # facet_grid(qs~part, scales = "free")+xlab("")+
-  ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  ylab("Relative turnover ratio of ASVs")+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -196,21 +194,20 @@ i1g<- intra_ro %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs==
         panel.spacing.x = unit(0,"line"), 
         axis.line= element_line(colour = "black"), 
         axis.line.y.right = element_line(colour = "black" ),
-                  axis.title.y.left = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
         axis.text = element_text(colour = "black", size = 10))+
   scale_y_continuous(limits = c(0, 1.3))+theme(
      strip.text.y = element_text(
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))+ggtitle("")
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
 
 i1<-intra_ro %>%mutate(TurnOver= 1-TurnoverComp) %>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   facet_wrap( ~qs, scales = "free")+xlab("")+
   ylab("Ratio of ASVs turnover-Roots")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(panel.grid.major = element_blank(), 
@@ -230,7 +227,7 @@ i2<-intra_ri %>%mutate(TurnOver= 1-TurnoverComp)%>% ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   facet_wrap(~qs, scales = "free")+
   xlab("")+ylab("Ratio of ASVs turnover-Rhizosphere")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+theme(panel.grid.major = element_blank(), 
                    panel.grid.minor = element_blank(),
@@ -241,13 +238,13 @@ i2<-intra_ri %>%mutate(TurnOver= 1-TurnoverComp)%>% ggpubr::ggboxplot(
         axis.line.y.right = element_line(colour = "black" ),
         axis.text = element_text(colour = "black", size = 10))
 
-my_comparisons2 <- list(  c("Wet", "Extremely \n dry"), c("Dry", "Extremely \n dry") )
+my_comparisons2 <- list(  c("Wet", "Extreme-dry"), c("Dry", "Extreme-dry") )
 
 i2b<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filter(qs=="q0")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   facet_grid(.~part, scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons2, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -267,15 +264,15 @@ i2b<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filte
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
-my_comparisons3 <- list( c("Dry", "Extremely \n dry") )
+my_comparisons3 <- list( c("Dry", "Extreme-dry") )
 
 i2e<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filter(qs=="q1")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
   #facet_grid(.~part, scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons3, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -296,15 +293,15 @@ i2e<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filte
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
-my_comparisons4 <- list(  c("Wet", "Dry"), c("Dry", "Extremely \n dry") )
+my_comparisons4 <- list(  c("Wet", "Dry"), c("Dry", "Extreme-dry") )
 
 i2h<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filter(qs=="q2")%>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
  # facet_grid(qs~part, scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons4, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -325,7 +322,7 @@ i2h<- intra_ri %>%mutate(TurnOver= 1-TurnoverComp, part="Rhizosphere") %>% filte
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))+ggtitle("")
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
 
 
@@ -333,15 +330,15 @@ intra_nr<- rbind(intra_nr_wet_q0, intra_nr_dry_q0, intra_nr_exdry_q0,
                  intra_nr_wet_q1, intra_nr_dry_q1, intra_nr_exdry_q1,
                  intra_nr_wet_q2, intra_nr_dry_q2, intra_nr_exdry_q2)%>% mutate(
           qss=case_when(
-            qs=="q0" ~ "q = 0 (richness)",
-            qs=="q1" ~ "q = 1 (frequent ASVs)",
-            qs=="q2" ~ "q = 2 (dominant ASVs)"))
+            qs=="q0" ~ "q = 0",
+            qs=="q1" ~ "q = 1",
+            qs=="q2" ~ "q = 2"))
 
 i3<-intra_nr%>%mutate(TurnOver= 1-TurnoverComp) %>% ggpubr::ggboxplot(
   x = "type", y="TurnoverComp", fill = "type")+
   facet_wrap(~qs, scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+theme( panel.grid.major = element_blank(), 
                     panel.grid.minor = element_blank(),   
@@ -370,11 +367,15 @@ i3<-intra_nr%>%mutate(TurnOver= 1-TurnoverComp) %>% ggpubr::ggboxplot(
       strip.text.x = element_text(
         size = 16 ))
 
-i3c<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(qs=="q0")%>%  ggpubr::ggboxplot(
+i3c<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(qs=="q0")%>% 
+  mutate(qs= case_when(
+    q==0 ~ "Richness",
+    q==1 ~ "Frequent species",
+    q==2 ~ "Dominant species")) %>% ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
-  facet_grid(qss~part, scales = "free")+xlab("")+
+  facet_grid(qs~part, scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -390,18 +391,22 @@ i3c<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(
        text = element_text(size = 14),
         axis.text = element_text(colour = "black", size = 10))+
   scale_y_continuous(limits = c(0, 1.5))+theme(
-  #  axis.title.x = element_blank()  )+theme(
+    axis.title.x = element_blank()  )+theme(
      strip.text.y = element_text(
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))+xlab("")
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
-i3f<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(qs=="q1")%>%  ggpubr::ggboxplot(
+i3f<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(qs=="q1")%>% 
+  mutate(qs= case_when(
+    q==0 ~ "Richness",
+    q==1 ~ "Frequent species",
+    q==2 ~ "Dominant species")) %>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
-  facet_grid(qss~., scales = "free")+xlab("")+
+  facet_grid(qs~., scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -422,15 +427,19 @@ i3f<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Bulk soil") %>% filter(
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
-my_comparisons5 <- list(  c("Wet", "Dry"), c("Wet", "Extremely \n dry") )
+my_comparisons5 <- list(  c("Wet", "Dry"), c("Wet", "Extreme-dry") )
 
-i3i<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs=="q2")%>%  ggpubr::ggboxplot(
+i3i<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs=="q2")%>% 
+  mutate(qs= case_when(
+    q==0 ~ "Richness",
+    q==1 ~ "Frequent species",
+    q==2 ~ "Dominant species")) %>%  ggpubr::ggboxplot(
   x = "type", y="TurnOver", fill = "type")+
-  facet_grid(qss~., scales = "free")+xlab("")+
+  facet_grid(qs~., scales = "free")+xlab("")+
   ylab("")+
-  scale_fill_manual(values = c("DarkGreen", "yellow", "red"))+
+  scale_fill_manual(values = c("#3498DB", "#F4D03F", "#E74C3C"))+
   stat_compare_means(comparisons = my_comparisons5, label = "p.signif")+
   theme_bw()+
   theme(legend.position = "none",
@@ -451,23 +460,24 @@ i3i<- intra_nr %>%mutate(TurnOver= 1-TurnoverComp, part="Roots") %>% filter(qs==
         size = 16, face = "italic"
         ),
       strip.text.x = element_text(
-        size = 16 ))+ggtitle("Watering regimes")
+        size = 16 ))+theme(axis.title.y =  element_blank())
 
 library(cowplot)
-titl<- get_title(i3i)
 
 p1<- plot_grid(i1a, i2b, i3c,
                i1d, i2e, i3f,
-               i1g, i2h, i3i+ggtitle(""),
-               rel_heights = c(1,1,1,
+               i1g, i2h, i3i, rel_heights = c(1,1,1,
                                               1,1,1,
                                               1,1,1),
-               labels = c("A)", "B)", "C)", "D)", "E)",
-                          "F)", "G)", "H)", "I)"), align = "hv", label_x = 0.05)
+               labels = c("a)", "b)", "c)", "d)", "e)",
+                          "f)", "g)", "h)", "i)"), align = "hv")
 
-p2<- plot_grid(NULL, titl, NULL)
-p<-plot_grid(p1,p2, nrow = 2, rel_heights = c(1,0.1), align = "v", axis = "bt")
-ggsave(plot=p, "../Figures/Fig2.intra-turnover-paired-mod.eps", width = 10, height = 11)
+#p<-plot_grid(
+ # i1+theme(legend.position = "none"),i2+theme(legend.position = "none"),
+  #i3+theme(legend.position = "none"), nrow = 3, labels = c("A", "B", "C"))
+#p
+p1
+ggsave(plot=p1, "Fig2.intra-turnover-paired-mod-colors.pdf", width = 10, height = 12)
 #ggsave(plot=p1, "../../Figures_final/Fig2.tiff", width = 10, height = 12, dpi = 300)
 
 

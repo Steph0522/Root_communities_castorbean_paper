@@ -29,7 +29,7 @@ fenoles$Time <- factor(fenoles$tiempo,
                        labels = c("day0", "2 months", "4 months", "6 months"))
 fenoles$Treatment <- factor(fenoles$T,
                             levels = c("1", "2", "3"),
-                            labels = c("Wet", "Dry", "Extreme dry"))
+                            labels = c("Wet", "Dry", "Extremely dry"))
 
 
 
@@ -39,7 +39,7 @@ q<- fenoles %>% filter(Time == "2 months") %>% ggboxplot(
   xlab = "Time" , 
   ylab = "mg GAE / g dry of leaves")
 
-q1<-q + stat_compare_means(aes(group= Treatment), label.y = 85)+ 
+q1<-q + stat_compare_means(aes(group= Treatment), label.y = 85, size=5)+ 
   font("legend.title", size = 8)+
   font("legend.text", size = 8)+theme(
     axis.title.x = element_blank(), 
@@ -56,7 +56,7 @@ r<-  fenoles %>% filter(Time == "2 months") %>%
   palette = pallete, color= "black", fill = "Treatment",
   legend="none",outlier.shape = NA,
   xlab = "Time", ylab = "mg GAE / g dry of roots")
-r1<-r +  stat_compare_means(aes(group= Treatment), label.y = 30)+
+r1<-r +  stat_compare_means(aes(group= Treatment), label.y = 30, size=5)+
   theme(
       axis.title.x = element_blank(), 
   axis.ticks = element_blank(),
@@ -79,7 +79,7 @@ s<-fenoles2 %>% filter(Time == "2 months") %>% ggboxplot(
   xlab = "Part of the plant", 
   ylab = "mg GAE/ g dry weight")
 
-s1<-s +   stat_compare_means(label.y = 73, show.legend = F, aes(
+s1<-s +   stat_compare_means(label.y = 73, size=5,show.legend = F, aes(
   label = paste0("Mann-Whitney U, p =", ..p.format..)))+ 
   font( "legend.title", size = 16)+
   font("legend.text", size = 16) +
@@ -96,14 +96,27 @@ s1<-s +   stat_compare_means(label.y = 73, show.legend = F, aes(
 
 #joinning plots
 
+s2<- s1+ggtitle("Plant compartments")
+q2<- q1+ggtitle("Watering regimes")
+r2<- r1+ggtitle("Watering regimes")
+t1<- get_title(s2)
+t2<- get_title(q2)
 
-third<- plot_grid(s1, q1,
-                  r1, ncol = 3, align = "vh",axis = "l",
-                  labels = c( "a)","b)", "c)"), label_size = 20)
+ts<- plot_grid(NULL, t1,NULL,NULL, t2,NULL, ncol = 6, nrow = 1) 
+  
+third<- plot_grid(s1+ggtitle(""), q1+ggtitle(""),
+                  r1+ggtitle(""), ncol = 3, align = "vh",axis = "l",
+                  labels = c( "A)","B)", "C)"), label_size = 20)
 
-third
+third_2<- plot_grid(third, ts, ncol = 1, nrow = 2, rel_heights = c(1,0.1))
 
-#ggsave('../../Figures_final/Fig6.tiff', width = 12, height = 5, dpi = 300, plot = third)
+third_2
+
+ls<- plot_grid(NULL, t2, NULL, ncol = 3)
+last<- plot_grid(r1, ls, nrow = 2, rel_heights = c(1,0.1))
+
+ggsave('../Figures/Fig6.eps', width = 12, height = 5, dpi = 300, plot = third_2)
+ggsave('../Figures/Fig6_roots.eps', width = 5, height = 4, dpi = 300, plot = last)
 
 
 ```

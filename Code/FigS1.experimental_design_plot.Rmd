@@ -27,7 +27,7 @@ library(ggpubr)
 library(readxl)
 library(viridis)
 
-ricinus<-load.image(file = "../Figures/ricinus3.jpg")
+ricinus<-load.image(file = "../Figures/ricinus4.png")
 exper<-load.image(file = "../Figures/exper.jpg")
 
 photo_panel <- ggdraw() + draw_image(ricinus, scale = 1)
@@ -41,6 +41,8 @@ table_exper[is.na(table_exper)] <-""
 names_cols<-c("Month", "March" ,"April" ,"May"  , "",  "" , "",  "",  ""  ,
               "" ,"June" , "", "", "", "July"  ,"")
 colnames(table_exper)<-names_cols 
+table_exper$Month[7]<- "Extremely dry"
+
 
 table_experiment<-table_exper %>% ggtexttable(rows = NULL, theme = ttheme("blank"))%>%
 tab_add_vline(at.column = 1:16, column.side = "left", from.row = 2, linetype = 2)%>%
@@ -62,11 +64,11 @@ tbody_add_border() %>%
     size = 10, face = "italic")
 
 
-p1<- plot_grid(photo_panel, photo_panel2, labels = c("a)", "b)"), label_size = 20, rel_widths = c(3,1), label_x = -0.02)
-p2<- plot_grid(p1, table_experiment, labels = c(NULL, "c)"), nrow =  2, label_size = 20, rel_heights = c(1.5,1), label_y = 0.2)
+p1<- plot_grid(photo_panel, photo_panel2, labels = c("A)", "B)"), label_size = 20, rel_widths = c(3,1), label_x = -0.02)
+p2<- plot_grid(p1, table_experiment, labels = c(NULL, "C)"), nrow =  2, label_size = 20, rel_heights = c(1.5,1), label_y = 0.2)
 p2
 
-#ggsave('../../Figures_final/FigS1s.tiff', width = 7.5, height = 5, dpi = 300, plot = p2)
+ggsave('../Figures/FigS1s.tiff', width = 8, height = 5, dpi = 300, plot = p2)
 
 ```
 

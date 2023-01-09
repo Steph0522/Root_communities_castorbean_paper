@@ -30,7 +30,7 @@ library(ggpubr)
 #Calculating Hill numbers
 #setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
 set.seed(123)
-otu_all<- read_qza("../../Data/merge_table_240_noplant_filtered_nous.qza")$data %>% as.data.frame()
+otu_all<- read_qza("../Data/merge_table_240_noplant_filtered_nous.qza")$data %>% as.data.frame()
 #remove non-fungi taxa
 taxonomy_240<- read_qza("../Data/taxonomy_blast_240_0.97.qza")$data
 
@@ -65,7 +65,7 @@ meta_all$Type<- factor(meta_all$Type_of_soil,
                                   "Roots", "Uncultivated", "Seeds"))
 meta_all$Treatment<- factor(meta_all$Treatment,
                             levels = c( "0", "1", "2", "3"),
-                            labels = c("Initial","Wet", "Dry", "Extreme_dry"))
+                            labels = c("Initial","Wet", "Dry", "Extremele_dry"))
 
 alpha_all<- data.frame(hill_all) %>% rownames_to_column(
   var = "sampleid") %>% inner_join(meta_all)%>% inner_join(
@@ -88,14 +88,19 @@ alpha_all<- data.frame(hill_all) %>% rownames_to_column(
 #Species as rows, traits as columns
 
 #setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
-Alpha.t_asv_table<- read.delim("../../Data/alpha_all_filt.tsv")%>%mutate(
+Alpha.t_asv_table<-read.delim("../Data/alpha_all_filt.tsv")%>%mutate(
                               qs= case_when(
                                 str_detect(q, "q0") ~ "q = 0",
                                 str_detect(q, "q1") ~ "q = 1",
-                                str_detect(q, "q2") ~ "q = 2"))
+                                str_detect(q, "q2") ~ "q = 2")) %>% filter(
+                            q %in% c("q0", "q1", "q2"))%>%mutate(
+                              qs= case_when(
+                                str_detect(q, "q0") ~ "q=0 (species richness)",
+                                str_detect(q, "q1") ~ "q=1 (typical species)",
+                                str_detect(q, "q2") ~ "q=2 (dominant species)"))
   
-EC_predicted <- read.delim("../../Data/ec_18S_counts.txt_predicted.tsv", row.names=1, check.names = F)
-otutable<- read_q2biom("../../Data/table_all.biom")
+EC_predicted <- read.delim("../Data/ec_18S_counts.txt_predicted.tsv", row.names=1, check.names = F)
+otutable<- read_q2biom("../Data/table_all.biom")
 totutable <- t(otutable)
 totutable <- totutable[ , match(rownames(EC_predicted), colnames(totutable))]
 
@@ -126,33 +131,41 @@ MD_q2<-Alpha.t_asv_table %>% filter(q=="q2") %>% inner_join(funct_q2, by = "samp
 
 ```{r, fig.height=10, fig.width=18}
 #setwd("/home/steph/Documents/Documentos/fastas nuevos/18S/R_project")
-MD_q<- read.delim("../Data/diversity.txt")%>%mutate(
-                              qs= case_when(
-                                str_detect(q, "q0") ~ "q = 0",
-                                str_detect(q, "q1") ~ "q = 1",
-                                str_detect(q, "q2") ~ "q = 2"))
-MD_q0<- read.delim("../Data/MD_q0.txt")%>%mutate(
-                              qs= case_when(
-                                str_detect(q, "q0") ~ "q = 0",
-                                str_detect(q, "q1") ~ "q = 1",
-                                str_detect(q, "q2") ~ "q = 2"))
-MD_q1<- read.delim("../Data/MD_q1.txt")%>%mutate(
-                              qs= case_when(
-                                str_detect(q, "q0") ~ "q = 0",
-                                str_detect(q, "q1") ~ "q = 1",
-                                str_detect(q, "q2") ~ "q = 2"))
-MD_q2<- read.delim("../Data/MD_q2.txt")%>%mutate(
-                              qs= case_when(
-                                str_detect(q, "q0") ~ "q = 0",
-                                str_detect(q, "q1") ~ "q = 1",
-                                str_detect(q, "q2") ~ "q = 2"))
+MD_q<- read.delim("../Data/diversity.txt")%>%mutate(qs= case_when(
+                                str_detect(
+                                  q, "q0") ~ "q=0 (richness)",
+                                str_detect(
+                                 q, "q1") ~ "q=1 (frequent ASVs)",
+                                str_detect(
+                                q, "q2") ~ "q=2 (dominant ASVs)"))
+MD_q0<- read.delim("../Data/MD_q0.txt")%>%mutate(qs= case_when(
+                                str_detect(
+                                  q, "q0") ~ "q=0 (richness)",
+                                str_detect(
+                                 q, "q1") ~ "q=1 (frequent ASVs)",
+                                str_detect(
+                                q, "q2") ~ "q=2 (dominant ASVs)"))
+MD_q1<- read.delim("../Data/MD_q1.txt")%>%mutate(qs= case_when(
+                                str_detect(
+                                  q, "q0") ~ "q=0 (richness)",
+                                str_detect(
+                                 q, "q1") ~ "q=1 (frequent ASVs)",
+                                str_detect(
+                                q, "q2") ~ "q=2 (dominant ASVs)"))
+MD_q2<- read.delim("../Data/MD_q2.txt")%>%mutate(qs= case_when(
+                                str_detect(
+                                  q, "q0") ~ "q=0 (richness)",
+                                str_detect(
+                                 q, "q1") ~ "q=1 (frequent ASVs)",
+                                str_detect(
+                                q, "q2") ~ "q=2 (dominant ASVs)"))
   
 
 
-MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
-MD_q0$Treatment <- factor(MD_q0$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
-MD_q1$Treatment <- factor(MD_q1$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
-MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extreme_dry"), labels = c("Wet", "Dry", "Extremely_dry"))
+MD_q0$Treatment <- factor(MD_q0$Treatment,levels = c("Wet", "Dry", "Extreme_dry"), labels = c("Wet", "Dry", "Extremely_dry"))
+MD_q1$Treatment <- factor(MD_q1$Treatment,levels = c("Wet", "Dry", "Extreme_dry"), labels = c("Wet", "Dry", "Extremely_dry"))
+MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"), labels = c("Wet", "Dry", "Extremely_dry"))
   
   
   a0<-MD_q  %>% filter(q=="q0" )%>% ggbarplot(., x = "Type", y = "value", 
@@ -162,17 +175,18 @@ MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"
     scale_fill_manual(
       values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+
     theme(legend.position = "none", axis.title.x = element_blank())+
-    ylab("Effective number of ASVs")+
+    ylab("")+
     theme( panel.border = element_blank(), 
        panel.spacing.x = unit(0,"line"), 
        axis.line= element_line(colour = "black"),
-       strip.text.y = element_text(size=14, face="italic"),
-       strip.text.x = element_text(size=14),
-       axis.title = element_text(size = 12),
+       strip.text.y = element_text(size=20, face="italic"),
+       strip.text.x = element_text(size=20),
+       axis.title = element_text(size = 24),
        axis.text.x = element_blank(),
        axis.ticks.x = element_blank(),
        panel.background=element_blank(), 
        axis.title.y.right = element_blank(),
+      axis.title.y.left = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
        axis.text.y.right = element_blank(),
        axis.ticks.y = element_blank(),
        axis.text.y = element_text(margin = margin(r = 0)),
@@ -190,10 +204,11 @@ MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"
     theme( panel.border = element_blank(), 
        panel.spacing.x = unit(0,"line"),
        axis.line= element_line(colour = "black"),
-        strip.text.y = element_text(size=14, face="italic"),
+        strip.text.y = element_text(size=20, face="italic"),
        strip.text.x = element_blank(),
-       axis.title = element_text(size = 12),
+       axis.title = element_text(size = 22),
         axis.text.x = element_blank(),
+      axis.title.y.left = element_text(margin = margin(t = 0, r = 40, b = 0, l = 0)),
        axis.ticks.x = element_blank(),
        panel.background=element_blank(), 
        axis.title.y.right = element_blank(),
@@ -210,26 +225,26 @@ MD_q2$Treatment <- factor(MD_q2$Treatment,levels = c("Wet", "Dry", "Extreme_dry"
                      sec.axis = dup_axis(breaks = 0))+
     theme(legend.position = "none",
           axis.title.x = element_blank())+
-    ylab("Effective number of ASVs")+
+    ylab("")+
     theme( panel.border = element_blank(), 
        panel.spacing.x = unit(0,"line"),
        axis.line= element_line(colour = "black"),
-        strip.text.y = element_text(size=14, face="italic"),
+        strip.text.y = element_text(size=20, face="italic"),
+       axis.title.y.left = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)),
        strip.text.x = element_blank(),
-       axis.title = element_text(size = 12),
+       axis.title = element_text(size = 20),
        panel.background=element_blank(), 
        axis.title.y.right = element_blank(),
        axis.text.y.right = element_blank(),
+       title = element_text(size = 22),
        axis.ticks.y = element_blank(),
-        axis.text = element_text(size = 11),
+        axis.text.x = element_text(size = 18, angle = 45,hjust = 1 ),
        axis.text.y = element_text(margin = margin(r = 0)),
-       axis.text.y.left = element_text(colour = "black", size = 12))
+       axis.text.y.left = element_text(colour = "black", size = 12))+ggtitle("Plant compartments")
     
 
-library(cowplot)
-  tres<-plot_grid(a0, a1, a2, nrow = 3, labels = c("a)", "b)", "c)"), label_y = 1.03,
-                   label_size = 20, hjust = -0.2, align = "v", rel_heights = c(1.1,1,1))
-  MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extreme_dry"))
+
+  MD_q$Treatment <- factor(MD_q$Treatment,levels = c("Wet", "Dry", "Extremely_dry"))
   
   b0<-MD_q0 %>% ggbarplot(., x = "Type", y = "MD_q", facet.by = c(
     "qs", "Treatment"),fill = "Type_of_soil", add = "mean_se")  + 
@@ -237,12 +252,13 @@ library(cowplot)
       values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+
     theme(
         legend.position = "none", axis.title.x = element_blank())+
-    ylab("Mean functional diversity")+
+    ylab("")+
     theme( panel.border = element_blank(), 
        panel.spacing.x = unit(0,"line"),
        axis.line= element_line(colour = "black"),
-        strip.text.y = element_text(size=14, face="italic"),
-       strip.text.x = element_text(size=14),
+        strip.text.y = element_text(size=20, face="italic"),
+            axis.title.y.left = element_text(margin = margin(t = 0, r = 40, b = 0, l = 0)),
+       strip.text.x = element_text(size=20),
        axis.title = element_text(size = 12),
        axis.ticks.x =element_blank(),
        axis.text.x = element_blank())
@@ -257,9 +273,10 @@ library(cowplot)
       theme( panel.border = element_blank(), 
      panel.spacing.x = unit(0,"line"),
      axis.line= element_line(colour = "black"),
-     strip.text.y = element_text(size=14, face="italic"),
-     axis.title = element_text(size = 12),
+     strip.text.y = element_text(size=20, face="italic"),
+     axis.title = element_text(size = 22),
       axis.ticks.x =element_blank(),
+     axis.title.y.left = element_text(margin = margin(t = 0, r = 40, b = 0, l = 0)),
       axis.text.x = element_blank(),
      strip.text.x = element_blank(),
      strip.background.x = element_blank(),
@@ -270,26 +287,41 @@ library(cowplot)
     scale_fill_manual(
       values = c("#800000", "#808000", "#008000", "#D35400", "#2E4053"))+
     theme(
-        legend.position = "none", axis.title.x = element_blank())+
-    ylab("Mean functional diversity")+ 
+        legend.position = "none", 
+        axis.title.x = element_blank())+
+    ylab("")+ 
     theme( panel.border = element_blank(), 
  panel.spacing.x = unit(0,"line"), 
  axis.line= element_line(colour = "black"),
-        strip.text.y = element_text(size=14, face="italic"),
-      axis.title = element_text(size = 12),
+        strip.text.y = element_text(size=20, face="italic"),
+      axis.title.x = element_blank(),
       strip.text.x = element_blank(),
      strip.background.x = element_blank(),
+      axis.title.y.left = element_text(margin = margin(t = 0, r = 40, b = 0, l = 0)),
  axis.text = element_text(size = 11),
-     panel.background =element_blank())
-  
-tres_b<- plot_grid(b0, b1, b2, nrow = 3, labels = c("d)", "e)", "f)"), label_y = 1.03,
-                   label_size = 20, hjust = -0.2, align = "v", rel_heights = c(1.1,1,1))
+ title = element_text(size = 22),
+        axis.text.x = element_text(size = 18, angle = 45,hjust = 1 ),
+     panel.background =element_blank())+ggtitle("Plant compartments")
+
+library(cowplot)
+tres<-plot_grid(
+  a0+ylab(""), a1, a2+ylab("")+ggtitle(""), nrow = 3, labels = c("A)", "B)", "C)"),
+                  label_y = 1,label_x =0.05,
+                   label_size = 18, hjust = -0.2, align = "v", rel_heights = c(1.1,1,1.5))
+    
+tres_b<- plot_grid(
+  b0, b1, b2+ggtitle(""), nrow = 3,ncol = 1, labels = c("D)", "E)", "F)"), 
+  label_y = 1,label_x =0.05,
+                   label_size = 18, hjust = -0.2, align = "v", rel_heights = c(1.1,1,1.5))
+tit<- get_title(b2)
+tres_c<- plot_grid(NULL, NULL,tit, NULL, nrow = 1)
 all<-  plot_grid(tres, tres_b, ncol = 2)
+all2<-plot_grid(all, tres_c, nrow = 2, rel_heights = c(1,0.1), axis = "r", align = "h")
 
-all
-
-#ggsave('/home/steph/Documents/Documentos/fastas nuevos/18S/R_project/Figures_final//Fig1.pdf',
-#width = 16, height = 9, dpi = 300, plot = all)
+all2
+#b<-plot_grid(tres, tres, ncol = 2, rel_widths = c(1.05,1))
+ggsave('Fig1_finals.pdf',
+width = 12, height = 13, dpi = 300, plot = all2)
 ```
 
 Lmer models with interaction effects -Taxonomic alpha diversity

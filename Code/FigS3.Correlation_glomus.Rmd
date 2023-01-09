@@ -27,11 +27,12 @@ library(circlize)
 library(viridis)
 library(ggpubr)
 library(ComplexHeatmap)
+source("make_face_names.R")
 ```
 
 ```{r, warning=FALSE, message=FALSE}
 metadata2<- read_tsv("../Data/meta_dos.txt")
-otutable<- read_qza("../../Data/merge_table_240_noplant_filtered_nous.qza")$data
+otutable<- read_qza("../Data/merge_table_240_noplant_filtered_nous.qza")$data
 taxonomy<- read_qza("../Data/taxonomy_blast_240_0.97.qza")$data
 
 parse<- qiime2R::parse_taxonomy(taxonomy)
@@ -61,7 +62,7 @@ cor_heat<-cor.plot%>% rownames_to_column(var="id") %>%  mutate_at(
     tax= case_when(
       tax=="raices"~ "Phenolic root content",
       TRUE~as.character(tax))) %>% filter(!id=="Arbus_per") %>% 
-  dplyr::select(tax, "%Arbuscule \n colonization"=Arbus_per) %>% 
+  dplyr::select(tax, "%Percentage of \n mycorrhizal colonization"=Arbus_per) %>% 
   column_to_rownames(var = "tax")
 
 
@@ -72,6 +73,9 @@ my_palette <- colorRampPalette(c("red", "white","blue"))(n=599)
 library(pheatmap)
 library(gridExtra)
 heats<-pheatmap(cor_heat, color = my_palette,legend = TRUE,cellheight = 50,
+         labels_row = make_face_names(cor_heat,
+                                      rownames, 
+                                      rc_names_i = c("Penicillium", "Fusarium")),
         cellwidth = 40,border_color = "black",
          cluster_cols = F, cluster_rows = F, fontsize = 10)
 
@@ -83,13 +87,13 @@ heat<- as.ggplot(heats)
 
 
 ```{r}
-otu_grouped<- read.delim("/home/steph/Documents/Documentos/fastas nuevos/18S/demultiplexed/demux/table_grouped_noplant_filt_nous/table_grouped.tsv",
+otu_grouped<- read.delim("../Data//table_grouped.tsv",
 skip = 1, check.names = F) %>% column_to_rownames(var = "#OTU ID") %>% dplyr::select(-taxonomy)
 
-taxo<- read_qza("/home/steph/Documents/Documentos/fastas nuevos/18S//demultiplexed/demux/seqs_and_taxonomy/taxonomy_blast_240_0.97.qza")$data
+taxo<- read_qza("../Data/taxonomy_blast_240_0.97.qza")$data
 phyra<-t(otu_grouped)/colSums(otu_grouped) *100
 
-metadata<- read_tsv("/home/steph/Documents/Documentos/fastas nuevos/18S//MAPPINGS/FINALMAP_GROUPED.txt")
+metadata<- read_tsv("../Data//FINALMAP_GROUPED.txt")
 
 otu_grouped_relab<- phyra %>% t() %>% as.data.frame() %>% rownames_to_column(
   var = "Feature.ID") %>% inner_join(taxonomy) %>% dplyr::select(-Feature.ID, -Consensus)
@@ -107,7 +111,7 @@ rel<-otu_glom %>% group_by(Type_of_soil, Treatments) %>% summarise_if(
   t() %>% as.data.frame() %>% rownames_to_column(var = "taxa") %>% mutate( 
     tax= str_extract(taxa, "[^__]+$")) %>% mutate(
    taxon = case_when(
- tax=="sp."~"s__Glomeromycotina",
+ tax=="sp."~"s__Glomeromycotina_sp.",
 tax=="uncultured"~"g__uncultured Glomerales",
 tax=="Glomeraceae"~"f__Glomeraceae",
 tax=="Rhizophagus"~"g__Rhizophagus",
@@ -120,7 +124,7 @@ relab<-otu_glom %>% dplyr::select("#SampleID",contains("d__")) %>% column_to_row
     tax= str_extract(
     taxa, "[^__]+$")) %>% mutate(
     taxon = case_when(
- tax=="sp."~"s__Glomeromycotina",
+ tax=="sp."~"s__Glomeromycotina_sp.",
 tax=="uncultured"~"g__uncultured Glomerales",
 tax=="Glomeraceae"~"f__Glomeraceae",
 tax=="Rhizophagus"~"g__Rhizophagus",
@@ -133,17 +137,17 @@ rel_sum<- rel %>% group_by(taxon) %>% summarise_if(
 
 
 target <- c("f__Glomeraceae","c__Glomeromycetes",
-            "g__Rhizophagus" ,"g__uncultured Glomerales","s__Glomeromycotina")
+            "g__Rhizophagus" ,"g__uncultured Glomerales","s__Glomeromycotina_sp.")
 rel_sum2<-rel_sum %>%rownames_to_column(var = "name") %>% arrange(
   factor(name, levels = target)) %>% column_to_rownames(var = "name")
 
 #other heatmap
 col_fun2 = colorRamp2(c(0, 0.5, 0.5+1e-5, 1,1.5), viridis(5, option = "D", direction = -1))
 split = rep(1:3, each = 3)
-treats<- c("1.Wet", "2.Dry", "3.Extreme-dry")
+treats<- c("1.Wet", "2.Dry", "3.Extremely-dry")
 cols_ho<- list("Water regime" = c("1.Wet" = '#479330',
                                "2.Dry"  =  '#FFFF00',
-                               "3.Extreme-dry"="#FF0000"))
+                               "3.Extremely-dry"="#FF0000"))
 ha = HeatmapAnnotation(foo = anno_block(gp = gpar(
   fill = c("#800000" ,"#808000" ,"#008000", "#D35400")), 
   labels = c("Bulk soil", "Rhizosphere", "Roots"), 
@@ -153,13 +157,17 @@ ho = HeatmapAnnotation("Water regime" = c(rep(treats, 3)),
                        which = "col", col = cols_ho,
                        annotation_name_gp = gpar(fontsize=10),
                        show_legend = T, gp = gpar(col = "white", 
-                                                  fontize=12), 
+                                                  fontize=14), 
                        show_annotation_name = T)
 
 ht<-Heatmap(rel_sum2, col = col_fun2,
             heatmap_legend_param = list(direction = "horizontal",
                  col_fun = col_fun2, title = "Relative \n abundance (%)",
-                 at = c(0,0.5, 1, 1.5), break_dist = 1), rect_gp = gpar(col = "white", lwd = 1), 
+                 at = c(0,0.5, 1, 1.5), break_dist = 1), 
+            rect_gp = gpar(col = "white", lwd = 1), 
+              row_labels = make_face_names(rel_sum2,
+                                      rownames, 
+                                      rc_names_i = c("g__Rhizophagus", "s__Glomeromycotina_sp.")),
             top_annotation = c(ha, ho),column_split = split,
            cluster_columns = F, cluster_rows = F,show_heatmap_legend = TRUE, 
          show_column_names = FALSE,
@@ -175,12 +183,12 @@ abunds<- grid.grabExpr(draw(abund))
 
 ```{r}
 
-one<-plot_grid(abunds, heat, rel_widths = c(1.5,1), labels = c("a)", "b)"), label_size = 20)
+one<-plot_grid(abunds, heat, rel_widths = c(1.5,1), labels = c("A)", "B)"), label_size = 20)
 one
 ```
 
 ```{r}
-#ggsave('../../Figures_final/FigS3.tiff',width = 10, height = 6, dpi = 300, plot =one)
+ggsave('../Figures/FigS3.eps',width = 10, height = 6, dpi = 300, plot =one)
 
 ```
 
